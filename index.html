@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Three.js Project</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+                "cannon-es": "https://unpkg.com/cannon-es/dist/cannon-es.js"
+            }
+
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import * as CANNON from 'cannon-es'
+        import CannonDebugger from './node_modules/cannon-es-debugger/dist/cannon-es-debugger.js';
+        // import { OrbitControls } from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+        import { PointerLockControlsCannon } from './pointerLockControlsCannon.js';
+        import Stats from './node_modules/three/examples/jsm/libs/stats.module.js';
+        import { GLTFLoader } from './node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+        import {threeToCannon, ShapeType} from './node_modules/three-to-cannon/dist/three-to-cannon.modern.js';
+        import { EffectComposer } from './node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
+        import { Sky } from './node_modules/three/examples/jsm/objects/Sky.js'
+        import { GUI } from './node_modules/three/examples/jsm/libs/lil-gui.module.min.js'
+
+
+        const width = window.innerWidth, height = window.innerHeight;
+
+        const timeStep = 1 / 60
+        let lastCallTime = performance.now()
+        let scene, camera, renderer, composer, controls, stats;
+        let sunLight, sunTarget, sunHelper;
+        let sky, sun;
+        let defaultMaterial, defaultGeometry, defaultRadius;
+        let world, cannonDebugger;
+        let slipMaterial;
+        let playerBody, playerMesh, playerShape, playerMaterial;
+        let moveSpeed = 10;
+
+        let cubeCamera, cubeRenderTarget;
+
+        let spotLight, spotLightHelper, spotLightTarget;
+
+        let keys = {};
+
+        const meshMap = new Map();
+        
+        init();
+
+        function init() {
+            // init
+            sceneSetup();
+            cameraSetup();
+            rendererSetup();
+            
+            statsSetup();
+            physicsSetup();
+            createObjects();
+            lightSetup();
+            skySetup();
+            
+            // inputSetup();
+            createPlayer();
+            controlsSetup();
+            loadGLTF('assets/map.glb', 1);
+        }
+
+        function sceneSetup() {
+            // scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color( 0x87ceeb );
+
+            scene.fog = new THREE.Fog( 0x87ceeb, 1, 1000 );
+
+        }
+
+        function cameraSetup() {
+            // camera
+            camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 100 );
+            // camera.position.z = 1;
+            // camera.position.y = 2;
+            camera.lookAt(0, 0, 0);
+        }
+
+        function rendererSetup() {
+            // renderer
+            // renderer = new THREE.WebGLRenderer( { antialias: true } );
+            // renderer.setSize( width, height );
+            // document.body.appendChild( renderer.domElement );
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer.setPixelRatio( window.devicePixelRatio );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            renderer.setAnimationLoop( animate );
+            renderer.outputEncoding = THREE.sRGBEncoding;
+            
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.VSMShadowMap;
+
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 0.3;
+            
+            document.body.appendChild( renderer.domElement );
+
+            
+            composer = new EffectComposer(renderer);
+            composer.addPass(new RenderPass(scene, camera));
+        }
+
+        function lightSetup() {
+            // lights
+            // const light = new THREE.DirectionalLight( 0xffffff, 1 );
+            // light.position.set( 5, 5, 5 );
+            // light.castShadow = true;
+            // light.shadow.mapSize.width = 1024;
+            // light.shadow.mapSize.height = 1024;
+            // light.shadow.camera.near = 0.5;
+            // light.shadow.camera.far = 500;
+
+            // scene.add( light );
+
+            // const ambientLight = new THREE.AmbientLight( 0xffffff, 0.5 );
+            // scene.add( ambientLight );
+
+            sunLight = new THREE.DirectionalLight(0xFFFFFF, 5);
+            sunLight.position.set(5, 10, 5);
+            sunLight.castShadow = true;
+            sunLight.shadow.bias = -0.0001;
+            const size = 50; 
+            sunLight.shadow.camera.left = -size;
+            sunLight.shadow.camera.right = size;
+            sunLight.shadow.camera.top = size;
+            sunLight.shadow.camera.bottom = -size;
+            sunLight.shadow.mapSize.width = 1048; // Default is 512
+            sunLight.shadow.mapSize.height = 1048; // Default is 512
+            sunLight.shadow.radius = 1;
+
+            sunTarget = new THREE.Object3D();
+            sunTarget.position.set(0, 0, 0);
+
+            spotLightTarget = new THREE.Object3D();
+            spotLightTarget.position.set(0, 0, -13);
+            camera.add(spotLightTarget);
+
+
+            sunLight.target.position.set(sunTarget.position.x, sunTarget.position.y, sunTarget.position.z);
+            scene.add(sunLight);
+
+            // sunHelper = new THREE.DirectionalLightHelper(sunLight, 5);
+            // scene.add(sunHelper);
+
+            spotLight = new THREE.SpotLight(0xFFFFFF, 0);
+            spotLight.position.set(0, 0, -0.1);
+            spotLight.target = spotLightTarget;
+            spotLight.angle = Math.PI / 4;
+            spotLight.penumbra = 0.3;
+            spotLight.decay = 0.7;
+            spotLight.distance = 10;
+
+            spotLight.castShadow = false;
+
+            camera.add(spotLight);
+
+            window.addEventListener('keydown', (event) => {
+                if (event.key === 'f') {
+                    spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
+                }
+            });
+
+            // spotLightHelper = new THREE.SpotLightHelper(spotLight);
+            // scene.add(spotLightHelper);
+
+
+        }
+
+        function skySetup() {
+            sky = new Sky();
+            sky.scale.setScalar( 450000 );
+            scene.add( sky );
+            
+
+            sun = new THREE.Vector3();
+
+
+            cubeRenderTarget = new THREE.WebGLCubeRenderTarget( 256 );
+				cubeRenderTarget.texture.type = THREE.HalfFloatType;
+
+				cubeCamera = new THREE.CubeCamera( 1, 1000, cubeRenderTarget );
+
+				//
+
+				let material = new THREE.MeshStandardMaterial( {
+					envMap: cubeRenderTarget.texture,
+					roughness: 0.05,
+					metalness: 1
+				} );
+
+                const geometry = new THREE.SphereGeometry( 1, 32, 16 );
+                const mesh = new THREE.Mesh( geometry, material );
+                scene.add( mesh );
+
+                scene.environment = cubeRenderTarget.texture;
+
+            /// GUI
+
+				const effectController = {
+					turbidity: 10,
+					rayleigh: 3,
+					mieCoefficient: 0.005,
+					mieDirectionalG: 0.975,
+					elevation: 2,
+					azimuth: 180,
+					exposure: renderer.toneMappingExposure
+				};
+
+				function guiChanged() {
+
+					const uniforms = sky.material.uniforms;
+					uniforms[ 'turbidity' ].value = effectController.turbidity;
+					uniforms[ 'rayleigh' ].value = effectController.rayleigh;
+					uniforms[ 'mieCoefficient' ].value = effectController.mieCoefficient;
+					uniforms[ 'mieDirectionalG' ].value = effectController.mieDirectionalG;
+
+					const phi = THREE.MathUtils.degToRad( 90 - effectController.elevation );
+					const theta = THREE.MathUtils.degToRad( effectController.azimuth );
+
+					sun.setFromSphericalCoords( 1, phi, theta );
+
+                    sunLight.position.copy(sun);
+
+					uniforms[ 'sunPosition' ].value.copy( sun );
+
+
+                    // Calculate the zenith angle cosine
+                    const sunDirection = new THREE.Vector3().copy(sunLight.position).normalize();
+                    const zenithAngleCos = sunDirection.y; // Assuming the up direction is (0, 1, 0)
+
+                    // Calculate the sun intensity
+                    const intensity = sunIntensity(zenithAngleCos);
+
+                    // Set the light intensity
+                    sunLight.intensity = intensity
+                    console.log(sunLight.intensity);
+
+					renderer.toneMappingExposure = effectController.exposure;
+					renderer.render( scene, camera );
+
+
+
+				}
+
+				const gui = new GUI();
+
+				gui.add( effectController, 'turbidity', 0.0, 20.0, 0.1 ).onChange( guiChanged );
+				gui.add( effectController, 'rayleigh', 0.0, 4, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, 'mieCoefficient', 0.0, 0.1, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, 'mieDirectionalG', 0.0, 1, 0.001 ).onChange( guiChanged );
+				gui.add( effectController, 'elevation', 0, 90, 0.1 ).onChange( guiChanged );
+				gui.add( effectController, 'azimuth', - 180, 180, 0.1 ).onChange( guiChanged );
+				gui.add( effectController, 'exposure', 0, 1, 0.0001 ).onChange( guiChanged );
+
+				guiChanged();
+            
+            
+            
+            
+        }
+
+        function calculateSunPosition(time) {
+            const dayDuration = 30; // seconds in a day
+            const dayTime = time % dayDuration;
+            const dayPercentage = dayTime / dayDuration;
+
+            // Elevation goes from -90 to 90 to -90
+            const elevation = (dayPercentage * 360 - 180);
+
+            // Azimuth goes from 180 to -180
+            const azimuth = (dayPercentage * 360 - 180);
+
+            // Rayleigh goes from 0 to 2 to 0 in half a day
+            const rayleigh = Math.abs(Math.sin(dayPercentage * Math.PI));
+
+
+            return { elevation, azimuth, rayleigh, dayPercentage };
+        }
+
+        function updateSunPosition(time) {
+            const { elevation, azimuth, rayleigh, dayPercentage } = calculateSunPosition(time);    
+
+            const phi = THREE.MathUtils.degToRad( 90 - elevation );
+            const theta = THREE.MathUtils.degToRad( azimuth );
+
+            sun.setFromSphericalCoords( 1, phi, theta );
+            sunLight.position.copy(sun);
+
+            sky.material.uniforms[ 'sunPosition' ].value.copy( sun );
+            sky.material.uniforms[ 'rayleigh' ].value = Math.abs(rayleigh);
+            console.log(rayleigh, dayPercentage)
+
+            // Calculate the zenith angle cosine
+            const sunDirection = new THREE.Vector3().copy(sunLight.position).normalize();
+            const zenithAngleCos = sunDirection.y; // Assuming the up direction is (0, 1, 0)
+
+            // Calculate the sun intensity
+            const intensity = sunIntensity(zenithAngleCos);
+
+            // Set the light intensity
+            sunLight.intensity = intensity
+
+            // console.log(sunLight.intensity);
+            // sunHelper.update();
+        }
+
+        function sunIntensity(zenithAngleCos) {
+            const cutoffAngle = 1.6110731556870734;
+            const steepness = 1.5;
+            const EE = 10.0;
+
+            zenithAngleCos = Math.max(-1, Math.min(1, zenithAngleCos));
+            return EE * Math.max(0, 1 - Math.exp(-(cutoffAngle - Math.acos(zenithAngleCos)) / steepness));
+        }
+
+        function controlsSetup() {
+            // controls
+            // controls = new OrbitControls( camera, renderer.domElement );
+            // controls.enableDamping = true;
+
+            playerMaterial = slipMaterial;
+
+            playerShape = new CANNON.Sphere(0.5)
+
+            playerBody = new CANNON.Body({ mass: 5, material: playerMaterial})
+            playerBody.addShape(playerShape, new CANNON.Vec3(0, 0, 0))
+            // playerBody.fixedRotation = true
+            // playerBody.updateMassProperties()
+
+            
+            // playerBody.position.set(-8, 5, 0)
+            
+            playerBody.linearDamping = 0.99
+            playerBody.angularDamping = 0.99
+            playerBody.allowSleep = false
+            
+            world.addBody(playerBody)
+
+            controls = new PointerLockControlsCannon(camera, playerBody)
+            scene.add(controls.getObject())
+            
+            window.addEventListener('click', () => {
+                controls.lock()
+            })
+
+            controls.addEventListener('lock', () => {
+                controls.enabled = true
+                // instructions.style.display = 'none'
+            })
+
+            controls.addEventListener('unlock', () => {
+                controls.enabled = false
+                // instructions.style.display = null
+            })
+        }
+
+        function statsSetup() {
+            // stats
+            stats = new Stats();
+            document.body.appendChild( stats.dom );
+        }
+
+        function physicsSetup() {
+            // physics
+            world = new CANNON.World({
+                gravity: new CANNON.Vec3(0, -9.82, 0), // m/s²
+            })
+
+            world.allowSleep = true
+
+            cannonDebugger = new CannonDebugger(scene, world, {
+                onInit(body, mesh) {
+                    // Toggle visibiliy on "d" press
+                    mesh.visible = false
+                    document.addEventListener('keydown', (event) => {
+                    if (event.key === '=') {
+                        mesh.visible = !mesh.visible
+                    }
+                    })
+                },
+            })
+
+            slipMaterial = new CANNON.Material('physics')
+                const physics_physics = new CANNON.ContactMaterial(slipMaterial, slipMaterial, {
+                friction: 0.0,
+                restitution: 0.3,
+            })
+        }
+        
+        function createObjects() {
+            // objects
+            defaultMaterial = new THREE.MeshNormalMaterial();
+            defaultGeometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
+            defaultRadius = 1;
+
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry( 100, 100, 100, 100 ),
+                new THREE.MeshStandardMaterial( { color: 0x808080, side: THREE.DoubleSide } )
+            );
+
+            floor.receiveShadow = true;
+
+            floor.rotation.x = - Math.PI / 2;
+            floor.position.y = -5;
+            scene.add( floor );
+
+            const groundBody = new CANNON.Body({
+                type: CANNON.Body.STATIC, // can also be achieved by setting the mass to 0
+                shape: new CANNON.Plane(),
+            })
+
+            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0) // make it face up
+            groundBody.position.set(0, -5, 0) // m
+            world.addBody(groundBody)
+
+            const sphereBody = new CANNON.Body({
+                mass: 5, // kg
+                shape: new CANNON.Sphere(defaultRadius),
+            })
+            sphereBody.position.set(0, 10, 0) // m
+            world.addBody(sphereBody)
+
+            sphereBody.damping = 0.9
+            sphereBody.angularDamping = 0.99
+
+            const geometry = new THREE.SphereGeometry(defaultRadius)
+            const sphereMesh = new THREE.Mesh(geometry, defaultMaterial)
+            scene.add(sphereMesh)
+
+            meshMap.set(sphereBody, sphereMesh)
+
+            const boxBody = new CANNON.Body({
+                mass: 5, // kg
+                shape: new CANNON.Box(new CANNON.Vec3(0.1, 0.1, 0.1)), // m
+            })
+            boxBody.position.set(0, 5, 0) // m
+            world.addBody(boxBody)
+
+            const box = new THREE.Mesh( defaultGeometry, defaultMaterial );
+            scene.add( box );
+
+            meshMap.set(boxBody, box)
+
+            //
+
+        //    const vertices = [
+        //     0,
+        //     0,
+        //     0, // vertex 0
+        //     1,
+        //     0,
+        //     0, // vertex 1
+        //     0,
+        //     1,
+        //     0, // vertex 2
+        //     ];
+        //     const indices = [
+        //     0,
+        //     1,
+        //     2, // triangle 0
+        //     ];
+        //     const trimeshShape = new CANNON.Trimesh(vertices, indices);
+        //     const trimeshBody = new CANNON.Body({
+        //     mass: 3, // kg
+        //     shape: trimeshShape,
+        //     });
+        //     trimeshBody.position.set(0, 0, 0); // m
+        //     world.addBody(trimeshBody);
+
+        //     const triangleGeometry = new THREE.BufferGeometry();
+        //     const triverts = new Float32Array([
+        //     0,
+        //     0,
+        //     0, // vertex 0
+        //     1,
+        //     0,
+        //     0, // vertex 1
+        //     0,
+        //     1,
+        //     0, // vertex 2
+        //     ]);
+        //     triangleGeometry.setAttribute(
+        //     "position",
+        //     new THREE.BufferAttribute(triverts, 3)
+        //     );
+
+        //     const triangleMaterial = new THREE.MeshBasicMaterial({
+        //     color: 0xff0000,
+        //     side: THREE.DoubleSide,
+        //     });
+        //     const triangleMesh = new THREE.Mesh(triangleGeometry, triangleMaterial);
+
+        //     scene.add(triangleMesh);
+
+        //     meshMap.set(trimeshBody, triangleMesh)
+            
+        }
+
+
+        function inputSetup() {
+            let keyDownListener = function(event) {
+                event.preventDefault();
+                // console.log(event.code);
+                keys[event.code] = true;
+                console.log(keys);
+            };
+
+            let keyUpListener = function(event) {
+                event.preventDefault();
+                // console.log(event.code);
+                keys[event.code] = false;
+            };
+
+            window.addEventListener('keydown', keyDownListener);
+            window.addEventListener('keyup', keyUpListener);
+        }
+
+        function createPlayer() {
+            // const size = 0.5
+            // playerBody = new CANNON.Body({ mass: 10})
+            // const shape = new CANNON.Cylinder(size, size, size*2, 16)
+            // const compSphere = new CANNON.Sphere(size)
+            // playerBody.addShape(shape, new CANNON.Vec3(0, size, 0))
+            // playerBody.addShape(compSphere, new CANNON.Vec3(0, size * 2, 0))
+            // playerBody.addShape(compSphere, new CANNON.Vec3(0, 0, 0))
+            // playerBody.position.set(size, size + 2, size)
+            // world.addBody(playerBody)
+
+            // playerBody.fixedRotation = true
+            // playerBody.updateMassProperties()  
+
+            // playerBody.damping = 0.9
+            // playerBody.angularDamping = 0.99
+
+            
+
+
+            // meshMap.set(playerBody, playerMesh)
+        }
+
+        // animation
+
+        function animate() {
+
+            const time = performance.now() / 1000
+            const dt = time - lastCallTime
+            lastCallTime = time
+
+            if (controls.enabled) {
+                world.step(timeStep, dt)
+                cannonDebugger.update()
+
+                for (const [body, mesh] of meshMap) {
+                    mesh.position.copy(body.position)
+                    mesh.quaternion.copy(body.quaternion)
+                }
+                
+                updateSunPosition(time)
+
+                cubeCamera.update(renderer, scene)
+
+                // spotLightHelper.update()
+
+                // Update ball positions
+                // for (let i = 0; i < balls.length; i++) {
+                //     ballMeshes[i].position.copy(balls[i].position)
+                //     ballMeshes[i].quaternion.copy(balls[i].quaternion)
+                // }
+
+                // // Update box positions
+                // for (let i = 0; i < boxes.length; i++) {
+                //     boxMeshes[i].position.copy(boxes[i].position)
+                //     boxMeshes[i].quaternion.copy(boxes[i].quaternion)
+                // }
+            }
+
+            controls.update(dt)
+            renderer.render(scene, camera)
+            stats.update()
+        }
+
+        // function animate( time ) {
+        //     stats.begin();
+            
+        //     controls.update();
+        //     world.fixedStep();
+            
+           
+        
+
+        //     renderer.render( scene, camera );
+        //     stats.update();
+        // }
+
+        function loadGLTF(url, scale) {
+            const loader = new GLTFLoader();
+            loader.load( url, function ( gltf ) {
+                // gltf.scene.scale.set(0.9, 0.9, 0.9);
+
+                gltf.scene.traverse( function ( child ) {
+                    if ( child.isMesh ) {
+                        if (child.material.isMeshStandardMaterial) {
+                            child.material.metalness = 0;
+                            child.material.roughness = 0.5;
+                            child.material.opacity = 0.5
+                            // child.material.envMapIntensity = globalEnvMapIntensity;
+                            // matList.push(child.material);
+                        } else if (Array.isArray(child.material)) {
+                            child.material.forEach(mat => {
+                                if (mat.isMeshStandardMaterial) {
+                                    mat.metalness = 0;
+                                    mat.roughness = 0.5;
+                                    mat.opacity = 0.5
+                                    // mat.envMapIntensity = globalEnvMapIntensity;
+                                    // matList.push(mat);
+                                }
+                            });
+                        }
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+
+
+                        let shapeType;
+                        switch (child.userData.shapeType) {
+                            case 'SPHERE':
+                                shapeType = ShapeType.SPHERE;
+                                break;
+                            case 'BOX':
+                                shapeType = ShapeType.BOX;
+                                break;
+                            case 'CYLINDER':
+                                shapeType = ShapeType.CYLINDER;
+                                break;
+                            case 'HULL':
+                                shapeType = ShapeType.HULL;
+                                break;
+                            case 'MESH':
+                                shapeType = ShapeType.MESH;
+                                break;
+                            default:
+                                shapeType = null;
+                        }
+                        let vertsMesh;
+                        let spherePoints;
+                        let sphereBody;
+                        let hasCol = false;
+                        if(child.children.length > 0) {
+
+                            //filter children to get the mesh with name ending in .col
+                            vertsMesh = child.children.filter(child => child.name.endsWith('col'))[0];
+                            if(vertsMesh) {
+                                console.log('found col for object', child.name);
+                                console.log(vertsMesh);
+                                hasCol = true;
+                            } else {
+                                vertsMesh = child;
+                            }
+                            spherePoints = child.children.filter(child => child.name.startsWith('Empty'));
+
+                        } else {
+                            vertsMesh = child;
+                            spherePoints = [];
+                        }
+                        
+                        if(hasCol) child.remove(vertsMesh);
+
+                        let res
+                        if(shapeType) {res = threeToCannon(vertsMesh, {type: shapeType});}
+                        if(spherePoints) {
+                            sphereBody = new CANNON.Body({mass: child.userData.mass || 0});
+                            spherePoints.forEach(spherePoint => {
+                                let sphere = new CANNON.Sphere(spherePoint.userData.radius || 0.5);
+                                sphereBody.addShape(sphere, new CANNON.Vec3(spherePoint.position.x, spherePoint.position.y, spherePoint.position.z));
+                            });
+                        }
+                        if(sphereBody) {world.addBody(sphereBody); meshMap.set(sphereBody, child);}
+                        else {
+                        
+                            res = threeToCannon(vertsMesh);
+
+                            console.log(res);
+
+                            const {shape, offset, orientation} = res;
+
+                            let physBody = new CANNON.Body({mass: child.userData.mass || 0});
+                            physBody.addShape(shape, offset, orientation);
+                            physBody.position.set(child.position.x, child.position.y, child.position.z);
+                            physBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
+                            world.addBody(physBody);
+
+                            meshMap.set(physBody, child);
+                        }
+                    
+                        // let vertsMesh;
+                        // let hasCol = false;
+
+                        // if(child.children.length > 0) {
+                        //     //filter children to get the mesh with name ending in .col
+                        //     vertsMesh = child.children.filter(child => child.name.endsWith('col'))[0];
+                        //     if(vertsMesh) {
+                        //         console.log('found col for object', child.name);
+                        //         console.log(vertsMesh);
+                        //         hasCol = true;
+                        //     } else {
+                        //         vertsMesh = child;
+                        //     }
+                        // } else {
+                        //     vertsMesh = child;
+                        // }
+
+                        // child.scale.set(scale, scale, scale);
+
+                        // // Extract the vertices from the mesh
+                        // const verticesArray = vertsMesh.geometry.attributes.position.array;
+                        // const indicesArray = vertsMesh.geometry.index ? child.geometry.index.array : [];
+
+                        // const vertices = [];
+                        // for (let i = 0; i < verticesArray.length; i += 3) {
+                        //     vertices.push(verticesArray[i], verticesArray[i + 1], verticesArray[i + 2]);
+                        // }
+
+                        // if(hasCol) child.remove(vertsMesh);
+
+                        // let childPosition = new THREE.Vector3();
+                        // child.getWorldPosition(childPosition);
+                        // // console.log(childPosition);
+                        // console.log(child.name, child)
+
+                        // const meshShape = new CANNON.Trimesh(vertices, indicesArray);
+                        // meshShape.setScale(new CANNON.Vec3(scale, scale, scale));
+                        // let trimeshBody = new CANNON.Body({
+                        //     mass: child.userData.mass || 1,
+                        //     shape: meshShape,
+                        // });
+
+                        // console.log(trimeshBody)
+                        // world.addBody(trimeshBody);
+                        // trimeshBody.position.set(childPosition.x, childPosition.y, childPosition.z);
+                        // trimeshBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
+
+                        // meshMap.set(trimeshBody, child);
+
+                        // const triangleGeometry = new THREE.BufferGeometry();
+                        // const triverts = new Float32Array(verticesArray);
+                        // triangleGeometry.setAttribute(
+                        //     "position",
+                        //     new THREE.BufferAttribute(triverts, 3)
+                        // );
+
+                        // const triangleMaterial = new THREE.MeshBasicMaterial({
+                        //     color: 0xff0000,
+                        //     side: THREE.DoubleSide,
+                        // });
+
+                        // const triangleMesh = new THREE.Mesh(triangleGeometry, triangleMaterial);
+
+                        // scene.add(triangleMesh);
+
+                        // meshMap.set(trimeshBody, triangleMesh)
+                    }
+                } );
+                scene.add( gltf.scene );
+            } );
+        }
+        
+    </script>
+</body>
+</html>
