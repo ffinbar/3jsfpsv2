@@ -71,7 +71,7 @@
             // inputSetup();
             createPlayer();
             controlsSetup();
-            loadGLTF('assets/map.glb', 1);
+            loadGLTF('assets/map2.glb', 1);
         }
 
         function sceneSetup() {
@@ -275,7 +275,7 @@
         }
 
         function calculateSunPosition(time) {
-            const dayDuration = 30; // seconds in a day
+            const dayDuration = 90; // seconds in a day
             const dayTime = time % dayDuration;
             const dayPercentage = dayTime / dayDuration;
 
@@ -617,7 +617,6 @@
                         if (child.material.isMeshStandardMaterial) {
                             child.material.metalness = 0;
                             child.material.roughness = 0.5;
-                            child.material.opacity = 0.5
                             // child.material.envMapIntensity = globalEnvMapIntensity;
                             // matList.push(child.material);
                         } else if (Array.isArray(child.material)) {
@@ -625,7 +624,6 @@
                                 if (mat.isMeshStandardMaterial) {
                                     mat.metalness = 0;
                                     mat.roughness = 0.5;
-                                    mat.opacity = 0.5
                                     // mat.envMapIntensity = globalEnvMapIntensity;
                                     // matList.push(mat);
                                 }
@@ -653,7 +651,7 @@
                                 shapeType = ShapeType.MESH;
                                 break;
                             default:
-                                shapeType = null;
+                                shapeType = ShapeType.BOX;
                         }
                         let vertsMesh;
                         let spherePoints;
@@ -674,7 +672,8 @@
 
                         } else {
                             vertsMesh = child;
-                            spherePoints = [];
+                            spherePoints = null;
+                            sphereBody = null;
                         }
                         
                         if(hasCol) child.remove(vertsMesh);
@@ -689,9 +688,9 @@
                             });
                         }
                         if(sphereBody) {world.addBody(sphereBody); meshMap.set(sphereBody, child);}
-                        else {
                         
-                            res = threeToCannon(vertsMesh);
+                        
+                          if(!shapeType)  res = threeToCannon(vertsMesh);
 
                             console.log(res);
 
@@ -704,7 +703,7 @@
                             world.addBody(physBody);
 
                             meshMap.set(physBody, child);
-                        }
+                        
                     
                         // let vertsMesh;
                         // let hasCol = false;
