@@ -15,7 +15,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
 
     // var eyeYPos = 2 // eyes are 2 meters above the ground
     this.velocityFactor = 0.2
-    this.jumpVelocity = 15
+    this.jumpVelocity = 30
 
     this.pitchObject = new THREE.Object3D()
     this.pitchObject.add(camera)
