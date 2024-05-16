@@ -30,13 +30,7 @@
         import { RenderPass } from './node_modules/three/examples/jsm/postprocessing/RenderPass.js';
         import { Sky } from './node_modules/three/examples/jsm/objects/Sky.js'
         import { GUI } from './node_modules/three/examples/jsm/libs/lil-gui.module.min.js'
-        import { ConvexMeshDecomposition } from "./node_modules/vhacd-js/lib/vhacd.js";
         import {GLTFExporter} from './node_modules/three/examples/jsm/exporters/GLTFExporter.js';
-        import { bunny } from './bunny.js'
-        import { collisions, addHulls } from './collisions.js'
-        import * as BufferGeometryUtils from './node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
-
-
 
         const width = window.innerWidth, height = window.innerHeight;
 
@@ -58,8 +52,6 @@
         let keys = {};
 
         const meshMap = new Map();
-
-        const decomposer = await ConvexMeshDecomposition.create();
         
         init();
 
@@ -78,7 +70,7 @@
             // inputSetup();
             createPlayer();
             controlsSetup();
-            loadGLTF('assets/tube.glb', 1);
+            loadGLTF('assets/coltesting.glb', 1);
         }
 
         function sceneSetup() {
@@ -93,16 +85,13 @@
         function cameraSetup() {
             // camera
             camera = new THREE.PerspectiveCamera( 70, width / height, 0.01, 100 );
-            // camera.position.z = 1;
-            // camera.position.y = 2;
+           
             camera.lookAt(0, 0, 0);
         }
 
         function rendererSetup() {
             // renderer
-            // renderer = new THREE.WebGLRenderer( { antialias: true } );
-            // renderer.setSize( width, height );
-            // document.body.appendChild( renderer.domElement );
+           
             renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
             renderer.setPixelRatio( window.devicePixelRatio );
             renderer.setSize( window.innerWidth, window.innerHeight );
@@ -342,24 +331,6 @@
             // controls = new OrbitControls( camera, renderer.domElement );
             // controls.enableDamping = true;
 
-            playerMaterial = slipMaterial;
-
-            playerShape = new CANNON.Sphere(0.5)
-
-            playerBody = new CANNON.Body({ mass: 5, material: playerMaterial})
-            playerBody.addShape(playerShape, new CANNON.Vec3(0, 0, 0))
-            // playerBody.fixedRotation = true
-            // playerBody.updateMassProperties()
-
-            
-            // playerBody.position.set(-8, 5, 0)
-            
-            playerBody.linearDamping = 0.99
-            playerBody.angularDamping = 0.99
-            playerBody.allowSleep = false
-            
-            world.addBody(playerBody)
-
             controls = new PointerLockControlsCannon(camera, playerBody)
             scene.add(controls.getObject())
             
@@ -464,59 +435,6 @@
             scene.add( box );
 
             meshMap.set(boxBody, box)
-
-            //
-
-        //    const vertices = [
-        //     0,
-        //     0,
-        //     0, // vertex 0
-        //     1,
-        //     0,
-        //     0, // vertex 1
-        //     0,
-        //     1,
-        //     0, // vertex 2
-        //     ];
-        //     const indices = [
-        //     0,
-        //     1,
-        //     2, // triangle 0
-        //     ];
-        //     const trimeshShape = new CANNON.Trimesh(vertices, indices);
-        //     const trimeshBody = new CANNON.Body({
-        //     mass: 3, // kg
-        //     shape: trimeshShape,
-        //     });
-        //     trimeshBody.position.set(0, 0, 0); // m
-        //     world.addBody(trimeshBody);
-
-        //     const triangleGeometry = new THREE.BufferGeometry();
-        //     const triverts = new Float32Array([
-        //     0,
-        //     0,
-        //     0, // vertex 0
-        //     1,
-        //     0,
-        //     0, // vertex 1
-        //     0,
-        //     1,
-        //     0, // vertex 2
-        //     ]);
-        //     triangleGeometry.setAttribute(
-        //     "position",
-        //     new THREE.BufferAttribute(triverts, 3)
-        //     );
-
-        //     const triangleMaterial = new THREE.MeshBasicMaterial({
-        //     color: 0xff0000,
-        //     side: THREE.DoubleSide,
-        //     });
-        //     const triangleMesh = new THREE.Mesh(triangleGeometry, triangleMaterial);
-
-        //     scene.add(triangleMesh);
-
-        //     meshMap.set(trimeshBody, triangleMesh)
             
         }
 
@@ -540,26 +458,23 @@
         }
 
         function createPlayer() {
-            // const size = 0.5
-            // playerBody = new CANNON.Body({ mass: 10})
-            // const shape = new CANNON.Cylinder(size, size, size*2, 16)
-            // const compSphere = new CANNON.Sphere(size)
-            // playerBody.addShape(shape, new CANNON.Vec3(0, size, 0))
-            // playerBody.addShape(compSphere, new CANNON.Vec3(0, size * 2, 0))
-            // playerBody.addShape(compSphere, new CANNON.Vec3(0, 0, 0))
-            // playerBody.position.set(size, size + 2, size)
-            // world.addBody(playerBody)
+            playerMaterial = slipMaterial;
 
+            playerShape = new CANNON.Sphere(0.5)
+
+            playerBody = new CANNON.Body({ mass: 5, material: playerMaterial})
+            playerBody.addShape(playerShape, new CANNON.Vec3(0, 0, 0))
             // playerBody.fixedRotation = true
-            // playerBody.updateMassProperties()  
-
-            // playerBody.damping = 0.9
-            // playerBody.angularDamping = 0.99
+            // playerBody.updateMassProperties()
 
             
-
-
-            // meshMap.set(playerBody, playerMesh)
+            // playerBody.position.set(-8, 5, 0)
+            
+            playerBody.linearDamping = 0.99
+            playerBody.angularDamping = 0.99
+            playerBody.allowSleep = false
+            
+            world.addBody(playerBody)
         }
 
         // animation
@@ -585,17 +500,6 @@
 
                 // spotLightHelper.update()
 
-                // Update ball positions
-                // for (let i = 0; i < balls.length; i++) {
-                //     ballMeshes[i].position.copy(balls[i].position)
-                //     ballMeshes[i].quaternion.copy(balls[i].quaternion)
-                // }
-
-                // // Update box positions
-                // for (let i = 0; i < boxes.length; i++) {
-                //     boxMeshes[i].position.copy(boxes[i].position)
-                //     boxMeshes[i].quaternion.copy(boxes[i].quaternion)
-                // }
             }
 
             controls.update(dt)
@@ -603,21 +507,6 @@
             stats.update()
         }
 
-        // function animate( time ) {
-        //     stats.begin();
-            
-        //     controls.update();
-        //     world.fixedStep();
-            
-           
-        
-
-        //     renderer.render( scene, camera );
-        //     stats.update();
-        // }
-
-        console.log(collisions)
-        let newCols = false;
 
         function loadGLTF(url, scale) {
             const loader = new GLTFLoader();
@@ -642,322 +531,121 @@
                             });
                         }
                         child.castShadow = true;
-                        child.receiveShadow = true;
-
-                        // does collisions have an entry with the same name as the child
-                        if (collisions.some(collision => collision.name === child.name)) {
-                            console.log('poop')
-                            let myCollision = collisions.find(collision => collision.name === child.name);
-                            console.log(myCollision);
-                            if(myCollision.hulls) {
-                                processHulls(child, myCollision.hulls);
-                            }
-
-                        } else {
-                            console.log('no poop')
-                            //we need to create the hulls and push them to the collisions array
-                            const options = { maxHulls: 64, voxelResolution: 1, maxVerticesPerHull: 64, fillMode: 'raycast' };
-                            // let hulls = createHulls(child, options);
-                            // addHulls(child.name, hulls);
-                            // newCols = true;
-                            // console.log(collisions);
-
-                            const mesh = {
-                                positions: child.geometry.attributes.position.array,
-                                indices: child.geometry.index.array,
-                            };
-                            ConvexMeshDecomposition.create().then((decomposition) => {
-                                const hulls = decomposition.computeConvexHulls(mesh, options);
-                                console.log(hulls);
-                                const convexMeshes = [];
-                                for (let i = 0; i < hulls.length; i++) {
-                                    const geometry = new THREE.BufferGeometry();
-                                    const positions = new Float32Array(hulls[i].positions);
-                                    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                                    geometry.setIndex(new THREE.BufferAttribute(hulls[i].indices, 1));                                 
-                                    const convexMesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
-                                    
-                                    convexMesh.userData.collisionType = 'convex';
-                                    convexMesh.userData.collisionHulls = true;
-                                    child.add(convexMesh);
-                                    newCols = true;
-                                }
-                            });
-                        }
-
+                        child.receiveShadow = true;                       
 
                         let shapeType;
                         switch (child.userData.shapeType) {
                             case 'SPHERE':
                                 shapeType = ShapeType.SPHERE;
+                                sphereCollision(child, child.userData.radius || 0.5);
                                 break;
                             case 'BOX':
                                 shapeType = ShapeType.BOX;
+                                boxCollision(child, child.userData.size);
                                 break;
                             case 'CYLINDER':
                                 shapeType = ShapeType.CYLINDER;
+                                cylinderCollision(child, child.userData.radiusTop, child.userData.radiusBottom, child.userData.height, child.userData.resolution);
                                 break;
                             case 'HULL':
                                 shapeType = ShapeType.HULL;
+                                hullCollision(child);
                                 break;
                             case 'MESH':
                                 shapeType = ShapeType.MESH;
+                                meshCollision(child);
                                 break;
                             default:
-                                shapeType = ShapeType.BOX;
+                                //no collision
+                            break;
                         }
-                        let vertsMesh;
-                        let hasCol = false;
-                        
-                        let res
-
-
-                        if(child.children.length > 0) {
-
-                            //filter children to get the mesh with name ending in .col
-                            vertsMesh = child.children.filter(child => child.name.endsWith('col'))[0];
-                            if(vertsMesh) {
-                                console.log('found col for object', child.name);
-                                console.log(vertsMesh);
-                                hasCol = true;
-                            } else {
-                                vertsMesh = child;
-                            }
-                            
-
-                        } else {
-                            vertsMesh = child;
-                        }
-
-                        console.log(vertsMesh)
-                        // Extract the vertices from the mesh
-                        // const positions = vertsMesh.geometry.attributes.position.array;
-                        // const indices = vertsMesh.geometry.index ? child.geometry.index.array : [];
-
-                        // const options = { maxHulls: 6 };
-                        // // Produce an array of convex hulls from a mesh.
-                        // const hulls = decomposer.computeConvexHulls({ positions, indices }, options);
-                        // console.log(hulls);
-                        // const options = { maxHulls: 64, voxelResolution: 1, maxVerticesPerHull: 64, fillMode: 'raycast' };
-                        // processMesh(vertsMesh, options).then(() => {
-                        //     console.log('Mesh processing complete');
-                        // }).catch((error) => {
-                        //     console.error('An error occurred while processing the mesh:', error);
-                        // });
-                        // let physBody = new CANNON.Body({mass: 0});
-                        
-
-                        if(hasCol) child.remove(vertsMesh);
-
-                        // if(shapeType) {res = threeToCannon(vertsMesh, {type: shapeType});}
-                        // if(spherePoints) {
-                        //     sphereBody = new CANNON.Body({mass: child.userData.mass || 0});
-                        //     spherePoints.forEach(spherePoint => {
-                        //         let sphere = new CANNON.Sphere(spherePoint.userData.radius || 0.5);
-                        //         sphereBody.addShape(sphere, new CANNON.Vec3(spherePoint.position.x, spherePoint.position.y, spherePoint.position.z));
-                        //     });
-                        // }
-                        // if(sphereBody) {world.addBody(sphereBody); meshMap.set(sphereBody, child);}
-                        
-                        
-                    
-                        // console.log(res);
-
-                        // const {shape, offset, orientation} = res;
-
-                        // let physBody = new CANNON.Body({mass: child.userData.mass || 0});
-                        // physBody.addShape(shape, offset, orientation);
-                        // physBody.position.set(child.position.x, child.position.y, child.position.z);
-                        // physBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
-                        // world.addBody(physBody);
-
-                        // meshMap.set(physBody, child);
-                        
-                    
-
-                        // let vertsMesh;
-                        // let hasCol = false;
-
-                        // if(child.children.length > 0) {
-                        //     //filter children to get the mesh with name ending in .col
-                        //     vertsMesh = child.children.filter(child => child.name.endsWith('col'))[0];
-                        //     if(vertsMesh) {
-                        //         console.log('found col for object', child.name);
-                        //         console.log(vertsMesh);
-                        //         hasCol = true;
-                        //     } else {
-                        //         vertsMesh = child;
-                        //     }
-                        // } else {
-                        //     vertsMesh = child;
-                        // }
-
-                        // child.scale.set(scale, scale, scale);
-
-                        
-
-                        // if(hasCol) child.remove(vertsMesh);
-
-                        // let childPosition = new THREE.Vector3();
-                        // child.getWorldPosition(childPosition);
-                        // // console.log(childPosition);
-                        // console.log(child.name, child)
-
-                        // const meshShape = new CANNON.Trimesh(vertices, indicesArray);
-                        // meshShape.setScale(new CANNON.Vec3(scale, scale, scale));
-                        // let trimeshBody = new CANNON.Body({
-                        //     mass: child.userData.mass || 1,
-                        //     shape: meshShape,
-                        // });
-
-                        // console.log(trimeshBody)
-                        // world.addBody(trimeshBody);
-                        // trimeshBody.position.set(childPosition.x, childPosition.y, childPosition.z);
-                        // trimeshBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
-
-                        // meshMap.set(trimeshBody, child);
-
-                        // const triangleGeometry = new THREE.BufferGeometry();
-                        // const triverts = new Float32Array(verticesArray);
-                        // triangleGeometry.setAttribute(
-                        //     "position",
-                        //     new THREE.BufferAttribute(triverts, 3)
-                        // );
-
-                        // const triangleMaterial = new THREE.MeshBasicMaterial({
-                        //     color: 0xff0000,
-                        //     side: THREE.DoubleSide,
-                        // });
-
-                        // const triangleMesh = new THREE.Mesh(triangleGeometry, triangleMaterial);
-
-                        // scene.add(triangleMesh);
-
-                        // meshMap.set(trimeshBody, triangleMesh)
                     }
                 } );
                 scene.add( gltf.scene );
-
-                if(newCols) {
-                    //export as gltf
-                    const exporter = new GLTFExporter();
-
-                    //re export the gltf scene
-                    
-                }
-
             } );
         }
 
-        // Wrap the hull creation in a function that returns a Promise
-        function createHulls(vertsMesh, options) {
-            return new Promise((resolve, reject) => {
-                try {
-                    const positions = vertsMesh.geometry.attributes.position.array;
-                    const indices = vertsMesh.geometry.index ? vertsMesh.geometry.index.array : [];
-                    const hulls = decomposer.computeConvexHulls({ positions, indices }, options);
-                    resolve(hulls);
-                } catch (error) {
-                    reject(error);
-                }
-            });
+        function sphereCollision(child, radius) {
+            let sphereBody = new CANNON.Body({mass: child.userData.mass || 0});
+            let sphere = new CANNON.Sphere(radius);
+            sphereBody.addShape(sphere);
+            sphereBody.position.set(child.position.x, child.position.y, child.position.z);
+            world.addBody(sphereBody);
+            meshMap.set(sphereBody, child);
         }
 
-        // Use the function in an async context
-        async function processMesh(mesh, options) {
-            const hulls = await createHulls(mesh, options);
-            console.log(hulls);
-
-            let body = new CANNON.Body({mass: 0});
-
-            // let geometries = [];
-            // Create a new THREE.Scene to hold the hulls
-            // const scene = new THREE.Scene();
-
-            // For each hull, create a new THREE.Mesh and add it to the scene
-            for (let i = 0; i < hulls.length; i++) {
-
-                //create a 3js mesh
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(hulls[i].positions);
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setIndex(new THREE.BufferAttribute(hulls[i].indices, 1));
-
-                let mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
-
-                let shape = threeToCannon(mesh, {type: ShapeType.HULL});
-
-                console.log(shape);
-                body.addShape(shape.shape);
-
-
-
-                // const geometry = new THREE.BufferGeometry();
-                // const positions = new Float32Array(hulls[i].positions);
-
-                // geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                // geometry.setIndex(new THREE.BufferAttribute(hulls[i].indices, 1));
-
-                // let randomColour = Math.random() * 0xffffff;
-
-                // const material = new THREE.MeshBasicMaterial({color: randomColour, wireframe: true});
-                // const mesh = new THREE.Mesh(geometry, material);
-
-                // scene.add(mesh);
-                // console.log(mesh);
+        function boxCollision(child, size) {
+            let boxBody = new CANNON.Body({mass: child.userData.mass || 0});
+            let dimensions;
+            if(size !== undefined) {
+                dimensions = new CANNON.Vec3(size.x, size.y, size.z);
+            } else {
+                //get dimensions from mesh
+                let box = new THREE.Box3().setFromObject(child);
+                dimensions = new CANNON.Vec3((box.max.x - box.min.x)/2, (box.max.y - box.min.y)/2, (box.max.z - box.min.z)/2);
             }
-
-            // let combGeom = BufferGeometryUtils.mergeGeometries(geometries);
-            // let combMesh = new THREE.Mesh(combGeom, new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
-
-            
-
-            world.addBody(body);
-            body.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
-            console.log(body);
-            meshMap.set(body, mesh);
-            // body.position.set(3, 3, 3);
-            // Create a GLTFExporter
-            // const exporter = new GLTFExporter();
-
-            // // Export the scene to a GLTF
-            // exporter.parse(scene, function (gltf) {
-            //     console.log(gltf); // This is the exported GLTF
-
-            //     // You can now download the GLTF or do whatever you want with it
-            //     const blob = new Blob([JSON.stringify(gltf)], {type: 'application/octet-stream'});
-            //     const url = URL.createObjectURL(blob);
-            //     const link = document.createElement('a');
-            //     link.href = url;
-            //     link.download = 'hulls.gltf';
-            //     link.click();
-            // }, {binary: false});
-
-            // return hulls;
+            let box = new CANNON.Box(dimensions);
+            boxBody.addShape(box);
+            boxBody.position.set(child.position.x, child.position.y, child.position.z);
+            world.addBody(boxBody);
+            meshMap.set(boxBody, child);
         }
 
-        function processHulls(mesh, hulls) {
-            let body = new CANNON.Body({mass: 0});
+        function cylinderCollision(child, radiusTop, radiusBottom, height, resolution) {
+            let cylinderBody = new CANNON.Body({mass: child.userData.mass || 0});
+            radiusTop = radiusTop ? radiusTop : radiusBottom ? radiusBottom : 0.5;
+            radiusBottom = radiusBottom ? radiusBottom : radiusTop ? radiusTop : 0.5;
+            let cylinder = new CANNON.Cylinder(radiusTop, radiusBottom, height, resolution);
+            cylinderBody.addShape(cylinder);
+            cylinderBody.position.set(child.position.x, child.position.y, child.position.z);
+            world.addBody(cylinderBody);
+            meshMap.set(cylinderBody, child);
+        }
 
-            for (let i = 0; i < hulls.length; i++) {
-                let positionsArray = Object.values(hulls[i].positions);
-                hulls[i].positions = positionsArray;
-                const geometry = new THREE.BufferGeometry();
-                const positions = new Float32Array(hulls[i].positions);
-                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                geometry.setIndex(new THREE.BufferAttribute(hulls[i].indices, 1));
-
-                let mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true}));
-                console.log(mesh)
-                let shape = threeToCannon(mesh, {type: ShapeType.HULL});
-
-                console.log(shape);
-                body.addShape(shape.shape);
+        function hullCollision(child) {
+            let hullType = child.userData.hullType || 'mesh';
+            let hullBody = new CANNON.Body({mass: child.userData.mass || 0});
+            let shape;
+            switch(hullType) {
+                case 'mesh':
+                    //create hull from mesh
+                    shape = threeToCannon(child, {type: ShapeType.HULL});
+                    
+                    
+                    hullBody.addShape(shape.shape);
+                break;
+                case 'colobject':
+                    //create hull from child with name ending in .col
+                    let colMesh = child.children.filter(child => child.name.endsWith('col'))[0];
+                    console.log(colMesh);
+                    shape = threeToCannon(colMesh, {type: ShapeType.HULL});
+                    hullBody.addShape(shape.shape, shape.offset, shape.orientation);
+                    child.remove(colMesh);
+                break;
+                case 'vhacd':
+                    //child has many children, each a convex hull
+                    //they will have _hull_ in their name
+                    let hulls = child.children.filter(child => child.name.includes('_hull_'));
+                    hulls.forEach(hull => {
+                        // hull position is (5.82892, -0.193318, -0.683173);
+                        //offset should be the difference between the child and the hull object
+                        let offset = new CANNON.Vec3(
+                            hull.position.x + child.position.x,
+                            hull.position.y + child.position.y,
+                            hull.position.z + child.position.z
+                        );
+                        offset = offset.vsub(child.position);
+                        let hullShape = threeToCannon(hull, {type: ShapeType.HULL});
+                        hullBody.addShape(hullShape.shape, offset);
+                        child.remove(hull);
+                    });
+                    
+                break;
             }
-
-            world.addBody(body);
-            body.position.set(mesh.position.x, mesh.position.y, mesh.position.z);
-            meshMap.set(body, mesh);
+            hullBody.position.set(child.position.x, child.position.y, child.position.z);
+            hullBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
+            world.addBody(hullBody);
+            meshMap.set(hullBody, child);
         }
         
     </script>
