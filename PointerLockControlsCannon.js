@@ -1,4 +1,4 @@
-import * as THREE from 'https://unpkg.com/three@0.164.1/build/three.module.js'
+import * as THREE from 'three'
 import * as CANNON from './node_modules/cannon-es/dist/cannon-es.js'
 
 /**
@@ -15,7 +15,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
 
     // var eyeYPos = 2 // eyes are 2 meters above the ground
     this.velocityFactor = 0.2
-    this.jumpVelocity = 30
+    this.jumpVelocity = 15
 
     this.pitchObject = new THREE.Object3D()
     this.pitchObject.add(camera)
@@ -32,6 +32,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
     this.moveRight = false
 
     this.canJump = false
+    this.isJumping = false
 
     const contactNormal = new CANNON.Vec3() // Normal in the contact, pointing *out* of whatever the player touched
     const upAxis = new CANNON.Vec3(0, 1, 0)
@@ -52,6 +53,8 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
       if (contactNormal.dot(upAxis) > 0.5) {
         // Use a "good" threshold value between 0 and 1 here!
         this.canJump = true
+        this.isJumping = false
+
       }
     })
 
@@ -149,8 +152,12 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
       case 'Space':
         if (this.canJump) {
           this.velocity.y = this.jumpVelocity
+          this.isJumping = false
+
         }
         this.canJump = false
+        this.isJumping = true
+        
         break
     }
   }
@@ -184,7 +191,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
   }
 
   getDirection() {
-    const vector = new CANNON.Vec3(0, 0, -1)
+    const vector = new THREE.Vector3(0, 0, -1)
     vector.applyQuaternion(this.quaternion)
     return vector
   }
