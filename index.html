@@ -1,27 +1,216 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     <title>Three.js Project</title>
     <style>
+         .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 1,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24
+        }
+
+        * {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body { margin: 0; }
         canvas { display: block; }
-        #crosshair {
+
+        h1 {
+            font-size: 2em;
+            margin-bottom: 1em;
+        }
+
+        #overlay {
             position: absolute;
             top: 50%;
             left: 50%;
             width: 10px;
             height: 10px;
-            background: #ffffff82;
+            background: transparent;
             border: none;
             border-radius: 50%;
             z-index: 2;
             margin-left: -5px;
             margin-top: -5px;
+            
         }
+
+        #chchar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #ffffffb3;
+            /* text-shadow: 0 0 2px #000000; */
+        }
+
+        #pauseMenu {
+            position: absolute;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+        }
+
+        #pauseMenu section {
+            display: flex;
+            flex-direction: column;
+            background: #00000082;
+            color: white;
+            padding: 2em;
+            max-width: 40vw;
+            max-height: 80vh;
+            overflow-y: auto;
+            width: 100%;
+            border-radius: 1em;
+            box-shadow: 0 0 10px 0 #00000082;
+        }
+
+        #pauseMenu section button {
+            margin: 0.5em;
+            padding: 0.5em;
+            border: none;
+            background: #00000082;
+            color: white;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+
+        #pauseMenu section p {
+            margin: 0.5em;
+            font-size: 1.2em;
+        }
+
+        #pauseMenu section button:hover {
+            background: #000000a1;
+        }
+
+        #pauseMenu section button:active {
+            background: #000000c1;
+        }
+
+        #settingsList {
+            display: flex;
+            flex-direction: column;
+            gap: 1em;
+            font-size: 1.2em;
+        }
+
+        select, input[type="range"] {
+            width: 100%;
+        }
+
+        select {
+            padding: 0.5em;
+        }
+
     </style>
 </head>
 <body>
-    <div id="crosshair"></div>
+    <div id="pauseMenu">
+        <section id="pauseDefault">
+            <h1>Paused</h1>
+            <button id="resume">Resume</button>
+            <button id="settings">Settings</button>
+            <button id="controls">Controls</button>
+            <button id="restart">Restart</button>
+        </section>
+        <section id="settingsMenu" style="display: none;">
+            <h1>Settings</h1>
+            <div id="settingsList">
+                <!-- <label for="sensitivity">Mouse Sensitivity: <span id="sensitivityValue">0.5</span></label>
+                <input type="range" id="sensitivity" min="0.1" max="1" step="0.1" value="0.5"> -->
+                <h2>Presets</h2>
+                <label for="quality">Quality</label>
+                <select id="quality">
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+
+                <h2>Player</h2>
+                <label for="moveSpeed">Move Speed: <span id="moveSpeedValue">0.5</span></label>
+                <input type="range" id="moveSpeed" min="0" max="10" step="0.5" value="0.5">
+                
+                <label for="jumpHeight">Jump Height: <span id="jumpHeightValue">15</span></label>
+                <input type="range" id="jumpHeight" min="0" max="50" step="1" value="15">
+
+                <h2>World</h2>
+                <label for="dayLength">Day Length (minutes): <span id="dayLengthValue">3</span></label>
+                <input type="range" id="dayLength" min="0.5" max="10" step="0.5" value="3">
+                
+                <h2>Graphics</h2>
+                <label for="fov">Field of View: <span id="fovValue">85</span></label>
+                <input type="range" id="fov" min="30" max="120" step="1" value="85">
+                
+                <label for="bloomStr">Bloom Strength: <span id="bloomStrValue">0.2</span></label>
+                <input type="range" id="bloomStr" min="0" max="3" step="0.1" value="0.2">
+
+                <label for="bloomRadius">Bloom Radius: <span id="bloomRadiusValue">1</span></label>
+                <input type="range" id="bloomRadius" min="0" max="3" step="0.1" value="1">
+
+                <label for="bloomThreshold">Bloom Threshold: <span id="bloomThresholdValue">2.6</span></label>
+                <input type="range" id="bloomThreshold" min="0" max="3" step="0.1" value="2.6">
+                
+                <label for="exposure">Exposure: <span id="exposureValue">0.3</span></label>
+                <input type="range" id="exposure" min="0" max="1" step="0.1" value="0.3">
+
+                <label for="environmentUpdateSpeed">Environment Update Speed (seconds): <span id="environmentUpdateSpeedValue">0.3</span></label>
+                <input type="range" id="environmentUpdateSpeed" min="0" max="10.1" step="0.1" value="0.3">
+                
+                
+                
+                <label for="shadows">Shadows</label>
+                <select id="shadows">
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                    <option value="off">Off</option>
+                </select>
+                
+            </div>
+            <button class="back">Back</button>
+        </section>
+        <section id="controlsList" style="display: none;">
+            <h1>Controls</h1>
+            <div>
+                <p>Use WASD to move</p>
+                <p>Space to jump</p>
+                <p>C to crouch</p>
+                <p>Press E when you see <span class="material-symbols-outlined">pan_tool</span> to grab an object</p>
+                <p>Press E again to release the object</p>
+                <p>Scrolling while holding an object will move it closer or further away</p>
+                <p>Press F for flashlight</p>
+            </div>
+            <button class="back">Back</button>
+        </section>
+        
+    </div>
+
+    <script>
+        
+
+
+    </script>
+
+    <div id="overlay">
+        
+        <span id="chchar" class="material-symbols-outlined" style="display: none;">
+        fiber_manual_record
+        </span>
+    </div>
+
     <script type="importmap">
         {
             "imports": {
@@ -48,17 +237,23 @@
         import { GUI } from './node_modules/three/examples/jsm/libs/lil-gui.module.min.js'
         import {GLTFExporter} from './node_modules/three/examples/jsm/exporters/GLTFExporter.js';
         import {ImprovedNoise } from './node_modules/three/examples/jsm/math/ImprovedNoise.js';
+        import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
 
         const width = window.innerWidth, height = window.innerHeight;
 
-        let isPaused = false;
+        let isPaused = true;
 
-        const timeStep = 1 /144; // seconds
-        let lastCallTime = performance.now()
+        let timeStep = 1 /60; // seconds
+        let lastCallTime = performance.now() /1000
         let pausedTime = 0
         let pauseStartTime;
 
-        let scene, camera, renderer, composer, controls, stats, outlinePass;
+        let dayLength = 3*60;
+
+        let scene, camera, renderer, composer, controls, stats, outlinePass = {};
+        let currentRenderer = renderer;
+        let bloomPass;
+        outlinePass.selectedObjects = [];
         let sunLight, sunTarget, sunHelper;
         let sky, sun;
         let sunUpdateInterval;
@@ -73,6 +268,26 @@
         let grabBody = {};
         let yawBody, handBody;
         let grabConstraint, jointBody;
+
+        let crosshairStates = {
+            look: 'fiber_manual_record',
+            grab: 'pan_tool',
+            interact: 'touch_app',
+            none: 'block'
+        }
+
+        let pauseMenu = document.getElementById('pauseMenu');
+        let menuDefault = document.getElementById('pauseDefault'), 
+        resumeBtn = document.getElementById('resume'),
+        settingsBtn = document.getElementById('settings'),
+        controlsBtn = document.getElementById('controls'), 
+        restartBtn = document.getElementById('restart'),
+        settingsMenu = document.getElementById('settingsMenu'),
+        controlsList = document.getElementById('controlsList'),
+        backBtns = document.querySelectorAll('.back'),
+        crosshair = document.getElementById('chchar');
+
+        let settings = {};
 
         let scrollDirection = 0; // 0: no scroll, 1: scroll up, -1: scroll down
 
@@ -93,10 +308,14 @@
         init();
 
         async function init() {
+            settingsSetup();
+
             // init
             sceneSetup();
             cameraSetup();
             rendererSetup();
+
+            setCrosshair('look');
             
             statsSetup();
             physicsSetup();
@@ -113,6 +332,173 @@
             scene.add(sceneGltf.scene);
 
             // carSetup();
+            
+        }
+
+        function settingsSetup() {
+            // settingsList setup
+            const settingsList = document.getElementById('settingsList');
+            settings = {}
+
+            settingsList.querySelectorAll('input, select').forEach(setting => {
+            settings[setting.id] = setting;
+            });
+
+            console.log(settings)
+
+            for (const setting in settings) {
+                settings[setting].addEventListener('input', () => {
+                    updateSetting(setting);
+                }) 
+            }
+
+            //player
+
+            settings.moveSpeed.addEventListener('input', () => {
+            updateMoveSpeed();
+            })
+
+            settings.jumpHeight.addEventListener('input', () => {
+            updateJumpHeight();
+            })
+
+            //
+
+            settings.dayLength.addEventListener('input', () => {
+            updateDayLength();
+            })
+
+            settings.fov.addEventListener('input', () => {
+            updateFov();
+            })
+
+            settings.bloomStr.addEventListener('input', () => {
+            updateBloomSettings(parseFloat(settings.bloomStr.value), null, null);
+            })
+
+            settings.bloomRadius.addEventListener('input', () => {
+            updateBloomSettings(null, parseFloat(settings.bloomRadius.value), null);
+            })
+
+            settings.bloomThreshold.addEventListener('input', () => {
+            updateBloomSettings(null, null, parseFloat(settings.bloomThreshold.value));
+            })
+
+            settings.exposure.addEventListener('input', () => {
+            updateExposure(parseFloat(settings.exposure.value));
+            })
+
+            settings.environmentUpdateSpeed.addEventListener('input', () => {
+            updateEnvironmentUpdateSpeed(settings.environmentUpdateSpeed.value);
+            })
+
+            settings.quality.addEventListener('input', () => {
+                switch (settings.quality.value) {
+                    case 'high':
+                        renderer.shadowMap.enabled = true;
+                        bloomPass.enabled = true;
+                        updateEnvironmentUpdateSpeed(0.3);
+                        currentRenderer = composer;
+                        sunLight.shadow.mapSize.width = 2048
+                        sunLight.shadow.mapSize.height = 2048
+                        break;
+                    case 'medium':
+                        renderer.shadowMap.enabled = true;
+                        bloomPass.enabled = true;
+                        updateEnvironmentUpdateSpeed(3);
+                        currentRenderer = composer;
+                        sunLight.shadow.mapSize.width = 1024
+                        sunLight.shadow.mapSize.height = 1024
+                        break;
+                    case 'low':
+                        renderer.shadowMap.enabled = false;
+                        bloomPass.enabled = false;
+                        updateEnvironmentUpdateSpeed(10.1);
+                        currentRenderer = renderer;
+                        sunLight.shadow.mapSize.width = 512;
+                        sunLight.shadow.mapSize.height = 512;
+
+                        break;
+                }
+                currentRenderer === composer ? composer.render() : renderer.render(scene, camera);
+            })
+        }
+
+        function updateSetting(setting) {
+            //if not a select element
+            if (settings[setting].type !== 'select-one') {
+            document.getElementById(`${setting}Value`).textContent = settings[setting].value;
+            }
+        }
+
+        function updateMoveSpeed(overrideValue = null) {
+            moveSpeed = overrideValue !== null ? parseFloat(overrideValue) : parseFloat(settings.moveSpeed.value);
+            if(controls) {
+            controls.velocityFactor = moveSpeed;
+            console.log(controls.velocityFactor)
+            }
+        }
+
+        function updateJumpHeight(overrideValue = null) {
+            controls.jumpVelocity = overrideValue !== null ? parseFloat(overrideValue) : parseFloat(settings.jumpHeight.value);
+        }
+
+        function updateDayLength(overrideValue = null) {
+            dayLength = overrideValue !== null ? parseFloat(overrideValue) * 60 : parseFloat(settings.dayLength.value) * 60;
+        }
+
+        function updateFov(overrideValue = null) {
+            camera.fov = overrideValue !== null ? parseFloat(overrideValue) : parseFloat(settings.fov.value);
+            camera.updateProjectionMatrix();
+            if(composer) {
+            composer.setSize(window.innerWidth, window.innerHeight);
+            composer.render();
+            }
+        }
+
+        function updateBloomSettings(strength = null, radius = null, threshold = null) {
+            if (strength !== null) {
+            bloomPass.strength = strength;
+            }
+            if (radius !== null) {
+            bloomPass.radius = radius;
+            }
+            if (threshold !== null) {
+            bloomPass.threshold = threshold;
+            }
+            composer.render();
+        }
+
+        function updateExposure(overrideValue = null) {
+            renderer.toneMappingExposure = overrideValue !== null ? parseFloat(overrideValue) : parseFloat(settings.exposure.value);
+            composer.render();
+        }
+
+        function updateEnvironmentUpdateSpeed(overrideValue = null) {
+            let value = overrideValue !== null ? overrideValue : parseFloat(settings.environmentUpdateSpeed.value);
+
+            if(sunUpdateInterval && cubeCamera) {
+            if(value == 10.1) {
+                clearInterval(sunUpdateInterval);
+                document.getElementById(`environmentUpdateSpeedValue`).textContent = 'Off';
+            } else {
+                clearInterval(sunUpdateInterval);
+                sunUpdateInterval = setInterval(function() {
+                cubeCamera.update(renderer, scene)
+                }, value * 1000);
+            }
+            }
+        }
+
+        
+        function setCrosshair(state) {
+            crosshair.textContent = crosshairStates[state];
+        }
+
+        function resume() {
+            controls.lock();
+            // pauseStartTime = performance.now();
+            
             
         }
 
@@ -134,7 +520,12 @@
             player.hand = new THREE.Object3D();
             camera.add(player.hand);
             player.hand.position.set(0, 0, -3);
-            player.grabDest = new THREE.Vector3(0, 0, 0);
+            
+            player.anim = {};
+
+            player.anim.grabDest = new THREE.Object3D();
+            camera.add(player.anim.grabDest);
+            player.anim.grabDest.position.set(0, 0, -1);
         }
 
         function rendererSetup() {
@@ -156,20 +547,22 @@
 
             
             composer = new EffectComposer(renderer);
+            currentRenderer = composer;
             composer.addPass(new RenderPass(scene, camera));
-            
 
-            outlinePass = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), scene, camera);
-            outlinePass.edgeStrength = 3.0;
-            outlinePass.edgeGlow = 1.0;
-            outlinePass.edgeThickness = 1.0;
-            outlinePass.pulsePeriod = 0;
-            outlinePass.usePatternTexture = false;
-            outlinePass.visibleEdgeColor.set('#ffffff');
-            outlinePass.hiddenEdgeColor.set('#190a05');
-            composer.addPass(outlinePass);
-            
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.2, 1, 2.6);
+            composer.addPass(bloomPass);
 
+            // outlinePass = new OutlinePass(new THREE.Vector2(1, 1), scene, camera);
+            // outlinePass.edgeStrength = 3.0;
+            // outlinePass.edgeGlow = 1.0;
+            // outlinePass.edgeThickness = 1.0;
+            // outlinePass.pulsePeriod = 0;
+            // outlinePass.usePatternTexture = false;
+            // outlinePass.visibleEdgeColor.set('#ffffff');
+            // outlinePass.hiddenEdgeColor.set('#190a05');
+            // composer.addPass(outlinePass);
+        
             const outputPass = new OutputPass();
             composer.addPass(outputPass);
         }
@@ -198,8 +591,8 @@
             sunLight.shadow.camera.right = size;
             sunLight.shadow.camera.top = size;
             sunLight.shadow.camera.bottom = -size;
-            sunLight.shadow.mapSize.width = 1048; // Default is 512
-            sunLight.shadow.mapSize.height = 1048; // Default is 512
+            sunLight.shadow.mapSize.width = 2048; // Default is 512
+            sunLight.shadow.mapSize.height = 2048; // Default is 512
             // sunLight.shadow.radius = 1;
 
             sunTarget = new THREE.Object3D();
@@ -259,11 +652,11 @@
 
             let material = new THREE.MeshStandardMaterial( {
                 envMap: cubeRenderTarget.texture,
-                roughness: 0.05,
+                roughness: 0,
                 metalness: 1
             } );
 
-            const geometry = new THREE.SphereGeometry( 1, 32, 16 );
+            const geometry = new THREE.SphereGeometry( 1, 8, 8 );
             const mesh = new THREE.Mesh( geometry, material );
             scene.add( mesh );
             mesh.position.set(0, 20, 0);
@@ -274,15 +667,15 @@
             //material:
 
             const starCanvas = document.createElement( 'canvas' );
-            starCanvas.width = 3024;
-            starCanvas.height = 2024;
+            starCanvas.width = 1012;
+            starCanvas.height = 1012;
             const starCtx = starCanvas.getContext( '2d' );
 
             // draw stars
-            for (let i = 0; i < 10000; i++) {
-                const x = Math.random() * starCanvas.width * 3;
-                const y = Math.random() * starCanvas.height * 3;
-                const size = Math.random() * 1.5;
+            for (let i = 0; i < 5000; i++) {
+                const x = Math.random() * starCanvas.width;
+                const y = Math.random() * starCanvas.height;
+                const size = Math.random() * 0.1;
                 starCtx.fillStyle = 'white'
                 starCtx.beginPath();
                 starCtx.arc(x, y, size, 0, 2 * Math.PI);
@@ -294,9 +687,10 @@
             starTexture.mapping = THREE.UVMapping;
 
             // star material
-            starMaterial = new THREE.MeshBasicMaterial( { map: starTexture, side: THREE.BackSide, transparent: true, opacity: 0 } );
+            starMaterial = new THREE.MeshStandardMaterial(
+                { map: starTexture, side: THREE.BackSide, transparent: true, opacity: 0, emissive: 0xffffff, emissiveIntensity: 50 } );
 
-            const starGeometry = new THREE.IcosahedronGeometry(100, 1);
+            const starGeometry = new THREE.SphereGeometry( 100,  8, 8 );
 
 
             starMesh = new THREE.Mesh( starGeometry, starMaterial );
@@ -345,8 +739,7 @@
                 sunLight.intensity = intensity
                 // console.log(sunLight.intensity);
 
-                renderer.toneMappingExposure = effectController.exposure;
-                renderer.render( scene, camera );
+                composer.render()
 
 
 
@@ -358,20 +751,19 @@
                 
                 if(controls.enabled) {
 
-                    updateSunPosition(lastCallTime);
                 
                     cubeCamera.update(renderer, scene)
                 }
                 
                 
-            }, 100);
+            }, 300);
             
                         
         }
 
         function calculateSunPosition(time) {
             
-            const dayDuration = 3*60; // seconds in a day
+            const dayDuration = dayLength; // seconds in a day
             const dayTime = time % dayDuration;
             let dayPercentage = (dayTime / dayDuration) % 1
             
@@ -448,63 +840,63 @@
 
             
             //heavy body is mesh called heavy_arm
-            let playerScene = await loadGLTF('assets/heavy.glb', 1)
-            console.log(playerScene)
-            player.model = playerScene.scene.children[0];
-            player.model.frustumCulled = false;
-            player.model.traverse(child => {
-                child.frustumCulled = false;
-            });
+            // let playerScene = await loadGLTF('assets/heavy.glb', 1)
+            // console.log(playerScene)
+            // player.model = playerScene.scene.children[0];
+            // player.model.frustumCulled = false;
+            // player.model.traverse(child => {
+            //     child.frustumCulled = false;
+            // });
 
-            const mixer = new THREE.AnimationMixer(player.model);
-            player.mixer = mixer;
-            mixers.push(mixer);
+            // const mixer = new THREE.AnimationMixer(player.model);
+            // player.mixer = mixer;
+            // mixers.push(mixer);
 
-            player.actions = player.actions || {};
-            for (const animation of playerScene.animations) {
-                const action = mixer.clipAction(animation);
-                console.log(animation)
-                if (animation.name !== 'idle') {
-                    action.setEffectiveWeight(0);
-                }
-                player.actions[animation.name] = action;
-            }
+            // player.actions = player.actions || {};
+            // for (const animation of playerScene.animations) {
+            //     const action = mixer.clipAction(animation);
+            //     console.log(animation)
+            //     if (animation.name !== 'idle') {
+            //         action.setEffectiveWeight(0);
+            //     }
+            //     player.actions[animation.name] = action;
+            // }
             
-            console.log(player)
+            // console.log(player)
 
-            player.actions['idle'].play();
+            // player.actions['idle'].play();
 
-            player.idleClip = player.actions['idle'].getClip();
-            player.grabClip = player.actions['grab_add'].getClip();
-            player.walkClip = player.actions['walk'].getClip();
-            player.jumpClip = player.actions['jump'].getClip();
-            player.fallClip = player.actions['fall'].getClip();
+            // player.idleClip = player.actions['idle'].getClip();
+            // player.grabClip = player.actions['grab_add'].getClip();
+            // player.walkClip = player.actions['walk'].getClip();
+            // player.jumpClip = player.actions['jump'].getClip();
+            // player.fallClip = player.actions['fall'].getClip();
             
-            THREE.AnimationUtils.makeClipAdditive(player.grabClip, 0, player.idleClip, 30);
-            THREE.AnimationUtils.makeClipAdditive(player.walkClip, 0, player.idleClip, 30);
-            THREE.AnimationUtils.makeClipAdditive(player.jumpClip, 0, player.idleClip, 30);
-            THREE.AnimationUtils.makeClipAdditive(player.fallClip, 0, player.idleClip, 30);
+            // THREE.AnimationUtils.makeClipAdditive(player.grabClip, 0, player.idleClip, 30);
+            // THREE.AnimationUtils.makeClipAdditive(player.walkClip, 0, player.idleClip, 30);
+            // THREE.AnimationUtils.makeClipAdditive(player.jumpClip, 0, player.idleClip, 30);
+            // THREE.AnimationUtils.makeClipAdditive(player.fallClip, 0, player.idleClip, 30);
             
-            let additiveGrabAddAction = player.mixer.clipAction(player.grabClip);
-            let additiveWalkAction = player.mixer.clipAction(player.walkClip);
-            let additiveJumpAction = player.mixer.clipAction(player.jumpClip);
-            let additiveFallAction = player.mixer.clipAction(player.fallClip);
+            // let additiveGrabAddAction = player.mixer.clipAction(player.grabClip);
+            // let additiveWalkAction = player.mixer.clipAction(player.walkClip);
+            // let additiveJumpAction = player.mixer.clipAction(player.jumpClip);
+            // let additiveFallAction = player.mixer.clipAction(player.fallClip);
             
 
-            player.actions['grab_add'] = additiveGrabAddAction;
-            player.actions['walk'] = additiveWalkAction;
-            player.actions['jump'] = additiveJumpAction;
-            player.actions['fall'] = additiveFallAction;
+            // player.actions['grab_add'] = additiveGrabAddAction;
+            // player.actions['walk'] = additiveWalkAction;
+            // player.actions['jump'] = additiveJumpAction;
+            // player.actions['fall'] = additiveFallAction;
         
-            player.actions['grab_add'].setEffectiveWeight(0);
-            player.actions['grab_add'].play();
-            player.actions['walk'].setEffectiveWeight(0);
-            player.actions['walk'].play();
-            player.actions['jump'].setEffectiveWeight(0);
-            player.actions['jump'].setLoop(THREE.LoopOnce);
-            player.actions['jump'].play();
-            player.actions['fall'].setEffectiveWeight(0);
-            player.actions['fall'].play();
+            // player.actions['grab_add'].setEffectiveWeight(0);
+            // player.actions['grab_add'].play();
+            // player.actions['walk'].setEffectiveWeight(0);
+            // player.actions['walk'].play();
+            // player.actions['jump'].setEffectiveWeight(0);
+            // player.actions['jump'].setLoop(THREE.LoopOnce);
+            // player.actions['jump'].play();
+            // player.actions['fall'].setEffectiveWeight(0);
+            // player.actions['fall'].play();
             // player.actions['idle'].play();
             // player.actions['grab_add'].setEffectiveWeight(1);
             // player.actions['grab_add'].play()
@@ -519,30 +911,36 @@
             player.yawObject = controls.getObject();
 
             // player.yawObject.add(player.model);
-            // player.model.scale.set(0.5, 0.5, 0.5);
-            // player.model.position.set(0, -0.3, .05);
+            // player.model.scale.set(0.7, 0.7, 0.7 );
+            // player.model.position.set(0, -0.2, -.1);
 
             yawBody = new CANNON.Body({
                 mass: 0,
                 shape: new CANNON.Box(new CANNON.Vec3(0.1, 0.1, 0.1)),
-                collisionResponse: false,
+                collisionResponse: true,
             })
             yawBody.position.set(0, 0, 0);
             world.addBody(yawBody);
 
-            ragdollSetup()
+            ragdollSetup(true, 0.4, 0.01)
 
 
             window.addEventListener('click', () => {
-                controls.lock()
+                if (!isPaused) {
+                    controls.enabled = true
+                    controls.lock()
+                }
             })
 
             controls.addEventListener('lock', () => {
-                controls.enabled = true
                 isPaused = false;
+                controls.enabled = true
+                
                 if (pauseStartTime !== undefined) {
                     pausedTime += performance.now() - pauseStartTime;
                 }
+                crosshair.style.display = null;
+                pauseMenu.style.display = 'none';
 
                 // animate()
                 // instructions.style.display = 'none'
@@ -552,7 +950,8 @@
                 controls.enabled = false
                 isPaused = true;
                 pauseStartTime = performance.now();
-
+                pauseMenu.style.display = null;
+                crosshair.style.display = 'none';
                 // instructions.style.display = null
             })
         }
@@ -703,7 +1102,31 @@
                     scrollDirection = 1;
                 }
             });
-            
+
+            resumeBtn.addEventListener('click', resume);
+            settingsBtn.addEventListener('click', () => {
+                pauseDefault.style.display = 'none';
+                settingsMenu.style.display = null;
+                controlsList.style.display = 'none';
+            });
+
+            controlsBtn.addEventListener('click', () => {
+                pauseDefault.style.display = 'none';
+                settingsMenu.style.display = 'none';
+                controlsList.style.display = null;
+            });
+
+            restartBtn.addEventListener('click', () => {
+                location.reload();
+            });
+
+            backBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    settingsMenu.style.display = 'none';
+                    pauseDefault.style.display = null;
+                    controlsList.style.display = 'none';
+                });
+            });
         }
 
         function createPlayer() {
@@ -727,13 +1150,21 @@
             playerBody.linearDamping = 0.99
             playerBody.angularDamping = 0.99
             playerBody.allowSleep = false
+
+            player.crouching = false;
             
             world.addBody(playerBody)
+
+            player.anim.grabDest.body = new CANNON.Body({ mass: 0, collisionResponse: false})
+            player.anim.grabDest.body.addShape(new CANNON.Box(new CANNON.Vec3(0.1, 0.1, 0.1)))
+            player.anim.grabDest.body.position.set(0, 0, 0)
+            world.addBody(player.anim.grabDest.body)
         }
 
         // animation
 
         player.isJumping = false;
+        let accumulatedTime = 0;
 
         function animate() {
             
@@ -746,138 +1177,117 @@
                 const dt = time - lastCallTime
                 lastCallTime = time
 
+                accumulatedTime += dt;
+
+                timeStep = (1 / (1/dt)) < 1/30 ? 1 / (1/dt) : 1/30;
+
+                if(accumulatedTime >= timeStep) {
+
+                    for (const [body, mesh] of meshMap) {
+                        mesh.position.copy(body.position)
+                        mesh.quaternion.copy(body.quaternion)
+                        mesh.castShadow = true
+                        mesh.receiveShadow = true
+                    }
+                    
+                    mixers.forEach(mixer => mixer.update(dt))
+
+                    updateSunPosition(lastCallTime);
+
+                    // if(player.currentAction.time >= 1) {
+                    //     player.currentAction.stop();
+                    //     player.currentAction = null;
+                    // }
+
+                    // updateSunPosition(time)
+
+                    // cubeCamera.update(renderer, scene)
+
+                    // spotLightHelper.update()
+
+                    // sunHelper.update()
+
+                    if(keys['KeyF']) {
+                        spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
+                        keys['KeyF'] = false;
+                    }
+                    if(keys['KeyE']) {
+                        grabObjectCheck(grabBody);
+                        keys['KeyE'] = false;
+                    }
+
+                    if(keys['KeyC']) {
+                        player.crouching = !player.crouching;
+                        keys['KeyC'] = false;
+                    }
+
+                    player.pitchObject.position.y = player.crouching ? Math.max(player.pitchObject.position.y - 0.01, 0.5) : Math.min(player.pitchObject.position.y + 0.01, 1);
+
+                    if(controls.canJump === false && playerBody.velocity.y <= 0 && playerBody.velocity.y >= -50) {
+                        playerBody.velocity.y -= 0.1 * (-playerBody.velocity.y / 3)
+                    }
+                
+
+                    outlineRaycast();
+                    
+                    moveGrabbedObject()
+
+                    
+                
+                    player.anim.grabDest.body.position.copy(player.anim.grabDest.getWorldPosition(new THREE.Vector3()))
+                    player.anim.grabDest.body.velocity.copy(playerBody.velocity)
+
+                    yawBody.position.copy(player.pitchObject.getWorldPosition(new THREE.Vector3()));
+                    yawBody.velocity.copy(playerBody.velocity);
+
+                    const playerPitchRotation = player.yawObject.rotation;
+
+                    yawBody.quaternion.setFromEuler(0, playerPitchRotation.y, 0, 'XYZ');
+
+                    const forwardQuaternion = new CANNON.Quaternion();
+                    forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
+                    yawBody.quaternion = yawBody.quaternion.mult(forwardQuaternion);
+
+                    const horizontalQuaternion = new CANNON.Quaternion();
+                    horizontalQuaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                    yawBody.quaternion = yawBody.quaternion.mult(horizontalQuaternion);
+
+                    //we want to move the player.hand in and out with the scroll wheel
+                    if(scrollDirection !== 0) {
+                        player.hand.position.z > -50 ? player.hand.position.z += scrollDirection : player.hand.position.z = -50;
+                        console.log(player.hand.position.z)
+                        // if(player.hand.position.z > 0) player.hand.position.z = -1;
+                        if(player.hand.position.z >= -1) player.hand.position.z = -1;
+                        scrollDirection = 0;
+                        
+                    }
+
+                    handBody.position.copy(player.hand.getWorldPosition(new THREE.Vector3()));
+                    handBody.velocity.copy(playerBody.velocity);
+
+                
+
+                    starMesh.position.copy(controls.getObject().position);
+
+                    
+
+                    controls.update(dt)
+                    controls.quaternion.normalize()
+                    // renderer.render(scene, camera)
+
+                    accumulatedTime = 0;
+
+                }
+
                 world.step(timeStep, dt)
                 cannonDebugger.update()
 
-                for (const [body, mesh] of meshMap) {
-                    mesh.position.copy(body.position)
-                    mesh.quaternion.copy(body.quaternion)
-                }
-                
-                mixers.forEach(mixer => mixer.update(dt))
-
-                // if(player.currentAction.time >= 1) {
-                //     player.currentAction.stop();
-                //     player.currentAction = null;
-                // }
-
-                // updateSunPosition(time)
-
-                // cubeCamera.update(renderer, scene)
-
-                // spotLightHelper.update()
-
-                // sunHelper.update()
-
-                if(keys['KeyF']) {
-                    spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
-                    keys['KeyF'] = false;
-                }
-                if(keys['KeyE']) {
-                    grabObjectCheck(grabBody);
-                    keys['KeyE'] = false;
-                }
-
-                if(controls.canJump === false && playerBody.velocity.y <= 0 && playerBody.velocity.y >= -50) {
-                    playerBody.velocity.y -= 0.1 * (-playerBody.velocity.y / 3)
-                }
-            
-
-                outlineRaycast();
-                
-                moveGrabbedObject()
-
-                // if(player.actions) {
-                //     switch (isGrabbing) {
-                //         case true:
-                //             if(player.actions['grab_add'].getEffectiveWeight() < 1) {
-                //                 player.actions['grab_add'].setEffectiveWeight(player.actions['grab_add'].getEffectiveWeight() + 0.02);
-                //             }
-                //             break;
-                //         case false:
-                //             if(player.actions['grab_add'].getEffectiveWeight() > 0) {
-                //                 player.actions['grab_add'].setEffectiveWeight(player.actions['grab_add'].getEffectiveWeight() - 0.01);
-                //             }
-                //             break;
-
-                //     }
-
-                //     if(controls) {
-                //         if(controls.moveForward || controls.moveBackward || controls.moveLeft || controls.moveRight) {
-                //             if(player.actions['walk'].getEffectiveWeight() < 1) {
-                //                 player.actions['walk'].setEffectiveWeight(player.actions['walk'].getEffectiveWeight() + 0.02);
-                //             }
-                //         } else {
-                //             if(player.actions['walk'].getEffectiveWeight() > 0) {
-                //                 player.actions['walk'].setEffectiveWeight(player.actions['walk'].getEffectiveWeight() - 0.01);
-                //             }
-                //         }
-
-                        
-                //         if(playerBody.velocity.y > 1) {
-
-                //             player.actions['jump'].isRunning() ? null : player.actions['jump'].reset().play();
-                //             player.actions['jump'].clampWhenFinished = true;
-                //             if(player.actions['jump'].getEffectiveWeight() < 1) {
-                //                 player.actions['jump'].setEffectiveWeight(player.actions['jump'].getEffectiveWeight() + 0.1);
-                //             } 
-                //         } else {
-                //             if(player.actions['jump'].getEffectiveWeight() > 0) {
-                //                 player.actions['jump'].setEffectiveWeight(player.actions['jump'].getEffectiveWeight() - 0.01);
-                //             }
-                //         }
-                        
-                //         if(playerBody.velocity.y <= -1) {
-                //             if(player.actions['fall'].getEffectiveWeight() < 1) {
-                //                 player.actions['fall'].setEffectiveWeight(player.actions['fall'].getEffectiveWeight() + 0.01);
-                //             } 
-                //         } else {
-                //             if(player.actions['fall'].getEffectiveWeight() > 0) {
-                //                 player.actions['fall'].setEffectiveWeight(player.actions['fall'].getEffectiveWeight() - 0.01);
-                //             }
-                //         }                    
-                    
-                //     }
-                // }
-            
-
-                yawBody.position.copy(player.pitchObject.getWorldPosition(new THREE.Vector3()));
-                yawBody.velocity.copy(playerBody.velocity);
-
-                const playerPitchRotation = player.yawObject.rotation;
-
-                yawBody.quaternion.setFromEuler(0, playerPitchRotation.y, 0, 'XYZ');
-
-                const forwardQuaternion = new CANNON.Quaternion();
-                forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-                yawBody.quaternion = yawBody.quaternion.mult(forwardQuaternion);
-
-                const horizontalQuaternion = new CANNON.Quaternion();
-                horizontalQuaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                yawBody.quaternion = yawBody.quaternion.mult(horizontalQuaternion);
-
-                //we want to move the player.hand in and out with the scroll wheel
-                if(scrollDirection !== 0) {
-                    player.hand.position.z += scrollDirection
-                    console.log(player.hand.position.z)
-                    // if(player.hand.position.z > 0) player.hand.position.z = -1;
-                    if(player.hand.position.z >= -1) player.hand.position.z = -1;
-                    scrollDirection = 0;
-                }
-
-                handBody.position.copy(player.hand.getWorldPosition(new THREE.Vector3()));
-                handBody.velocity.copy(playerBody.velocity);
-
-            
-
-                starMesh.position.copy(controls.getObject().position);
-
-                controls.update(dt)
-                controls.quaternion.normalize()
-                // renderer.render(scene, camera)
-                composer.render()
+                currentRenderer === renderer ? renderer.render(scene, camera) : composer.render()
                 
                 stats.update()
+
+                
+                // console.log(1/dt)
             }
         }
 
@@ -917,16 +1327,20 @@
             return result;
         }
 
+        let castBody = null;
 
         function outlineRaycast() {
+            // if(grabbedObject) {setCrosshair('grab'); return;}
             let cast = playerRaycast()
+            // if(castBody === cast.body) return;
 
-            // console.log(cast)
-            let castBody = cast.body;
-            // console.log(castBody);
+           
+            castBody = cast.body;
+
             if(castBody && castBody.mass === 0) {
                 outlinePass.selectedObjects = [];
                 grabBody = null;
+                grabbedObject === null ? setCrosshair('look') : setCrosshair('grab');
                 return;
             }
             let castMesh = meshMap.get(castBody);
@@ -935,15 +1349,16 @@
                 outlinePass.selectedObjects = [castMesh];
                 grabBody = castBody;
                 grabBody.cast = cast;
-                
+                setCrosshair('grab');
             } else {
                 outlinePass.selectedObjects = [];
                 grabBody = null;
+                grabbedObject === null ? setCrosshair('look') : setCrosshair('grab');
             }
         }
 
         function grabObjectCheck(body) {
-            if(body === null) {grabbedObject = null; isGrabbing = false; removegrabConstraint(); return;}
+            if(body === null) {grabbedObject = null; isGrabbing = false; removegrabConstraint(); world.removeConstraint(player.handConstraint); return;}
             if(body.mass === 0) return;
             
             if(grabbedObject) {
@@ -952,6 +1367,7 @@
                     grabbedObject = null;
                     isGrabbing = false;
                     removegrabConstraint();
+                    world.removeConstraint(player.handConstraint);
                 } else {
                     //grab object
                     grabbedObject = body;
@@ -962,6 +1378,8 @@
 
                     addJointConstraint(grabBody.cast.hitPointWorld, grabbedObject);
                     moveJoint(grabBody.cast.distance);
+
+                    world.addConstraint(player.handConstraint);
                 }
             } else {
                 //grab object
@@ -970,15 +1388,38 @@
                 // player.hand.position.z = -grabBody.cast.distance;
                 // console.log(grabBody.cast, player.hand)
                 removegrabConstraint();
-
+                
                 addJointConstraint(grabBody.cast.hitPointWorld, grabbedObject);
                 moveJoint(grabBody.cast.distance);
+
+                world.addConstraint(player.handConstraint);
 
             }
             console.log(grabbedObject, isGrabbing);
         }
 
+        function createDebugSphere(position, timeout = 5000) {
+            const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const sphereMesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphereMesh.position.copy(position);
+            scene.add(sphereMesh);
+
+            setTimeout(() => {
+                scene.remove(sphereMesh);
+            }, timeout);
+        }
+
+        let constrained = [];
+
         function addJointConstraint(position, constrainedBody) {
+            constrainedBody.originalDampingA = constrainedBody.angularDamping;
+            constrainedBody.originalDampingL = constrainedBody.linearDamping;
+            constrainedBody.linearDamping = 0.999;
+            constrainedBody.angularDamping = 0.999;
+
+            constrained.push(constrainedBody);
+
             // Vector that goes from the body to the clicked point
             const vector = new CANNON.Vec3().copy(position).vsub(constrainedBody.position)
 
@@ -1008,7 +1449,13 @@
         function removegrabConstraint() {
             world.removeConstraint(grabConstraint)
             grabConstraint = undefined
+            constrained.forEach(body => {
+                body.angularDamping = body.originalDampingA;
+                body.linearDamping = body.originalDampingL;
+                constrained = constrained.filter(b => b !== body);
+            });
         }
+
 
         function moveGrabbedObject() {
             if(grabbedObject) {
@@ -1026,15 +1473,20 @@
                 // // grabbedObject.position.set(destination.x, destination.y, destination.z);
                 // grabbedObject.velocity.set(difference.x, difference.y, difference.z);
                 // // console.log(difference)
-                const handConstraint = new CANNON.Spring(player.ragdollHand, handBody, {
-                    restLength: 1,
-                    stiffness: 1,
-                    damping: 3,
-                    localAnchorA: new CANNON.Vec3(0, 0, 0),
-                    localAnchorB: new CANNON.Vec3(0, 0, 0),
-                })
+                // player.handConstraint.update();
+               
+                
+                //only apply force in sync with timestep
+                // console.log(dt, timeStep)
 
-                handConstraint.applyForce();
+                // accumulatedTime += dt;
+
+                // if(accumulatedTime >= timeStep) {
+                //     player.handConstraint.applyForce();
+                //     accumulatedTime = 0;
+                // }
+
+                
             }
         }
 
@@ -1251,13 +1703,13 @@
         }
 
 
-        function ragdollSetup() {
+        function ragdollSetup(isPlayer = false, scale = 1, mass = 1) {
             const { bodies, constraints } = createRagdoll({
-                scale: 0.35,
+                scale: scale,
                 angle: Math.PI / 2,
                 angleShoulders: Math.PI / 3,
                 twistAngle: Math.PI / 2,
-                mass: 0.01,
+                mass: mass,
             })
 
             bodies.forEach((body) => {
@@ -1265,6 +1717,10 @@
                 body.allowSleep = false
                 body.linearDamping = 0.99
                 body.angularDamping = 0.99
+                if(isPlayer) {
+                    body.collisionFiltergroup = PLAYER_GROUP
+                    body.collisionFilterMask = EVERYTHING_ELSE_GROUP
+                }
                 world.addBody(body)
             })
 
@@ -1297,7 +1753,10 @@
             player.ragdollHand = ragdollHand
 
             
-
+            if(isPlayer) {
+                const handConstraint = new CANNON.DistanceConstraint(player.ragdollHand, player.anim.grabDest.body, 0.7, 0.1)
+                player.handConstraint = handConstraint;
+            }
             
 
         }
@@ -1305,6 +1764,15 @@
         function createRagdoll({ scale = 1, angle, angleShoulders, twistAngle, mass = 1}) {
             const bodies = []
             const constraints = []
+
+            let ragdollMeshMaterial = function() {
+                let randomColour = Math.floor(Math.random()*(0xffffff - 0xaaaaaa) + 0xaaaaaa).toString(16);
+                return new THREE.MeshStandardMaterial({
+                    color: `#${randomColour}`,
+                    metalness: 0.1,
+                    roughness: 0.5,
+                });
+            }
 
             const shouldersDistance = 0.5 * scale
             const upperArmLength = 0.4 * scale
@@ -1353,8 +1821,9 @@
             lowerRightLeg.addShape(lowerLegShape)
             bodies.push(lowerLeftLeg)
             bodies.push(lowerRightLeg)
-            let lowerLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), new THREE.MeshNormalMaterial());
-            let lowerRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), new THREE.MeshNormalMaterial());
+
+            let lowerLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
+            let lowerRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
             scene.add(lowerLeftLegMesh);
             scene.add(lowerRightLegMesh);
             meshMap.set(lowerLeftLeg, lowerLeftLegMesh);
@@ -1381,8 +1850,8 @@
             upperRightLeg.addShape(upperLegShape)
             bodies.push(upperLeftLeg)
             bodies.push(upperRightLeg)
-            let upperLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(upperLegSize, lowerLegSize, upperLegLength), new THREE.MeshNormalMaterial());
-            let upperRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(upperLegSize, lowerLegSize, upperLegLength), new THREE.MeshNormalMaterial());
+            let upperLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(upperLegSize, lowerLegSize, upperLegLength), ragdollMeshMaterial());
+            let upperRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(upperLegSize, lowerLegSize, upperLegLength), ragdollMeshMaterial());
             scene.add(upperLeftLegMesh);
             scene.add(upperRightLegMesh);
             meshMap.set(upperLeftLeg, upperLeftLegMesh);
@@ -1395,9 +1864,9 @@
             })
             pelvis.addShape(pelvisShape)
             bodies.push(pelvis)
-            // let pelvisMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, pelvisLength), new THREE.MeshNormalMaterial());
-            // scene.add(pelvisMesh);
-            // meshMap.set(pelvis, pelvisMesh);
+            let pelvisMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, pelvisLength), ragdollMeshMaterial());
+            scene.add(pelvisMesh);
+            meshMap.set(pelvis, pelvisMesh);
 
 
             // Upper body
@@ -1411,19 +1880,19 @@
             //make it vertical
             // upperBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2)
 
-            // let upperBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, upperBodyLength), new THREE.MeshNormalMaterial());
+            // let upperBodyMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, upperBodyLength), ragdollMeshMaterial());
             // scene.add(upperBodyMesh);
             // meshMap.set(upperBody, upperBodyMesh);
 
             // Head
-            // const head = new CANNON.Body({
-            // mass: mass,
-            // position: new CANNON.Vec3(0, 0, upperBody.position.z + upperBodyLength / 2 + headRadius + neckLength),
-            // })
-            // head.addShape(headShape)
-            // head.name = 'head';
-            // bodies.push(head)
-            // let headMesh = new THREE.Mesh(new THREE.SphereGeometry(headRadius), new THREE.MeshNormalMaterial());
+            const head = new CANNON.Body({
+            mass: mass,
+            position: new CANNON.Vec3(0, 0, upperBody.position.z + upperBodyLength / 2 + headRadius + neckLength),
+            })
+            head.addShape(headShape)
+            head.name = 'head';
+            bodies.push(head)
+            // let headMesh = new THREE.Mesh(new THREE.SphereGeometry(headRadius), ragdollMeshMaterial());
             // scene.add(headMesh);
             // meshMap.set(head, headMesh);
 
@@ -1448,8 +1917,8 @@
             upperRightArm.addShape(upperArmShape)
             bodies.push(upperLeftArm)
             bodies.push(upperRightArm)
-            let upperLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), new THREE.MeshNormalMaterial());
-            let upperRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), new THREE.MeshNormalMaterial());
+            let upperLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
+            let upperRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
             scene.add(upperLeftArmMesh);
             scene.add(upperRightArmMesh);
             meshMap.set(upperLeftArm, upperLeftArmMesh);
@@ -1477,23 +1946,23 @@
             bodies.push(lowerLeftArm)
             bodies.push(lowerRightArm)
             lowerRightArm.name = 'hand';
-            let lowerLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), new THREE.MeshNormalMaterial());
-            let lowerRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), new THREE.MeshNormalMaterial());
+            let lowerLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), ragdollMeshMaterial());
+            let lowerRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), ragdollMeshMaterial());
             scene.add(lowerLeftArmMesh);
             scene.add(lowerRightArmMesh);
             meshMap.set(lowerLeftArm, lowerLeftArmMesh);
             meshMap.set(lowerRightArm, lowerRightArmMesh);
 
             // Neck joint
-            // const neckJoint = new CANNON.ConeTwistConstraint(head, upperBody, {
-            // pivotA: new CANNON.Vec3(0, 0, -headRadius - neckLength / 2),
-            // pivotB: new CANNON.Vec3(0, 0, upperBodyLength / 2),
-            // axisA: CANNON.Vec3.UNIT_Z,
-            // axisB: CANNON.Vec3.UNIT_Z,
-            // angle: 0,
-            // twistAngle: 0,
-            // })
-            // constraints.push(neckJoint)
+            const neckJoint = new CANNON.ConeTwistConstraint(head, upperBody, {
+            pivotA: new CANNON.Vec3(0, 0, -headRadius - neckLength / 2),
+            pivotB: new CANNON.Vec3(0, 0, upperBodyLength / 2),
+            axisA: CANNON.Vec3.UNIT_Z,
+            axisB: CANNON.Vec3.UNIT_Z,
+            angle: 0,
+            twistAngle: 0,
+            })
+            constraints.push(neckJoint)
 
             // Knee joints
             const leftKneeJoint = new CANNON.ConeTwistConstraint(lowerLeftLeg, upperLeftLeg, {

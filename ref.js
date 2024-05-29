@@ -78,3 +78,61 @@ triggerBody.addEventListener("collide", (event) => {
     console.log("The sphere entered the trigger!", event);
   }
 });
+
+
+
+
+
+
+// if(player.actions) {
+                //     switch (isGrabbing) {
+                //         case true:
+                //             if(player.actions['grab_add'].getEffectiveWeight() < 1) {
+                //                 player.actions['grab_add'].setEffectiveWeight(player.actions['grab_add'].getEffectiveWeight() + 0.02);
+                //             }
+                //             break;
+                //         case false:
+                //             if(player.actions['grab_add'].getEffectiveWeight() > 0) {
+                //                 player.actions['grab_add'].setEffectiveWeight(player.actions['grab_add'].getEffectiveWeight() - 0.01);
+                //             }
+                //             break;
+
+                //     }
+
+                //     if(controls) {
+                //         if(controls.moveForward || controls.moveBackward || controls.moveLeft || controls.moveRight) {
+                //             if(player.actions['walk'].getEffectiveWeight() < 1) {
+                //                 player.actions['walk'].setEffectiveWeight(player.actions['walk'].getEffectiveWeight() + 0.02);
+                //             }
+                //         } else {
+                //             if(player.actions['walk'].getEffectiveWeight() > 0) {
+                //                 player.actions['walk'].setEffectiveWeight(player.actions['walk'].getEffectiveWeight() - 0.01);
+                //             }
+                //         }
+
+                        
+                //         if(playerBody.velocity.y > 1) {
+
+                //             player.actions['jump'].isRunning() ? null : player.actions['jump'].reset().play();
+                //             player.actions['jump'].clampWhenFinished = true;
+                //             if(player.actions['jump'].getEffectiveWeight() < 1) {
+                //                 player.actions['jump'].setEffectiveWeight(player.actions['jump'].getEffectiveWeight() + 0.1);
+                //             } 
+                //         } else {
+                //             if(player.actions['jump'].getEffectiveWeight() > 0) {
+                //                 player.actions['jump'].setEffectiveWeight(player.actions['jump'].getEffectiveWeight() - 0.01);
+                //             }
+                //         }
+                        
+                //         if(playerBody.velocity.y <= -1) {
+                //             if(player.actions['fall'].getEffectiveWeight() < 1) {
+                //                 player.actions['fall'].setEffectiveWeight(player.actions['fall'].getEffectiveWeight() + 0.01);
+                //             } 
+                //         } else {
+                //             if(player.actions['fall'].getEffectiveWeight() > 0) {
+                //                 player.actions['fall'].setEffectiveWeight(player.actions['fall'].getEffectiveWeight() - 0.01);
+                //             }
+                //         }                    
+                    
+                //     }
+                // }
