@@ -25,6 +25,11 @@
         h1 {
             font-size: 2em;
             margin-bottom: 1em;
+            color: white;
+        }
+
+        h2,h3 {
+            color: white;
         }
 
         #overlay {
@@ -61,6 +66,7 @@
             justify-content: center;
             align-items: center;
             pointer-events: all;
+            background-color: #3d3f85;
         }
 
         #pauseMenu section {
@@ -119,6 +125,9 @@
 </head>
 <body>
     <div id="pauseMenu">
+        <h1>Fin's Cool Game!</h1>
+        <h2>Work In Progress</h2>
+        <h3 style="margin-bottom: 1em;">You should read the Controls...</h3>
         <section id="pauseDefault">
             <h1>Paused</h1>
             <button id="resume">Resume</button>
@@ -185,15 +194,15 @@
         <section id="controlsList" style="display: none;">
             <h1>Controls</h1>
             <div>
-                <p>Use WASD to move</p>
-                <p>Space to jump</p>
-                <p>C to crouch</p>
-                <p>Press E when you see <span class="material-symbols-outlined">pan_tool</span> to grab an object</p>
-                <p>Press E again to release the object</p>
-                <p>Press F when you see <span class="material-symbols-outlined">touch_app</span> to interact with an object</p>
+                <p>Use <b>WASD</b> to move</p>
+                <p>Press <b>Space</b> to jump. Hold space while in the air to jump again as soon as you land</p>
+                <p>Press <b>C</b> to toggle crouch. This affects your movement speed. Good for precise jumps</p>
+                <p>Press <b>E</b> when you see <span class="material-symbols-outlined">pan_tool</span> to grab an object</p>
+                <p>Press <b>E</b> again to release the object</p>
+                <p>Press <b>F</b> when you see <span class="material-symbols-outlined">touch_app</span> to interact with an object</p>
                 <p>Items can be equipped and dropped by interacting with them</p>
                 <p>Scrolling while holding an object will move it closer or further away</p>
-                <p>Press L for flashlight</p>
+                <p>Press <b>L</b> for flashlight</p>
             </div>
             <button class="back">Back</button>
         </section>
