@@ -31,7 +31,10 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
     this.moveLeft = false
     this.moveRight = false
 
+    this.stepSound;
+
     this.canJump = false
+    this.jumpPreload = false
     this.isJumping = false
 
     const contactNormal = new CANNON.Vec3() // Normal in the contact, pointing *out* of whatever the player touched
@@ -54,6 +57,13 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
         // Use a "good" threshold value between 0 and 1 here!
         this.canJump = true
         this.isJumping = false
+        this.stepSound.isPlaying ? null : this.stepSound.play()
+        if(this.jumpPreload) {
+          this.velocity.y = this.jumpVelocity
+          this.jumpPreload = false
+          this.isJumping = true
+        } 
+        
 
       }
     })

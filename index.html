@@ -190,8 +190,10 @@
                 <p>C to crouch</p>
                 <p>Press E when you see <span class="material-symbols-outlined">pan_tool</span> to grab an object</p>
                 <p>Press E again to release the object</p>
+                <p>Press F when you see <span class="material-symbols-outlined">touch_app</span> to interact with an object</p>
+                <p>Items can be equipped and dropped by interacting with them</p>
                 <p>Scrolling while holding an object will move it closer or further away</p>
-                <p>Press F for flashlight</p>
+                <p>Press L for flashlight</p>
             </div>
             <button class="back">Back</button>
         </section>
@@ -238,12 +240,13 @@
         import {GLTFExporter} from './node_modules/three/examples/jsm/exporters/GLTFExporter.js';
         import {ImprovedNoise } from './node_modules/three/examples/jsm/math/ImprovedNoise.js';
         import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { DecalGeometry } from './node_modules/three/examples/jsm/geometries/DecalGeometry.js';
 
         const width = window.innerWidth, height = window.innerHeight;
 
         let isPaused = true;
 
-        let timeStep = 1 /60; // seconds
+        let timeStep = 1 /144; // seconds
         let lastCallTime = performance.now() /1000
         let pausedTime = 0
         let pauseStartTime;
@@ -261,6 +264,7 @@
         let world, cannonDebugger;
         let slipMaterial;
         let player = {};
+        player.equipped = null;
         let playerBody, playerMesh, playerShape, playerMaterial;
         let isGrabbing = false;
         let moveSpeed = 10;
@@ -268,6 +272,9 @@
         let grabBody = {};
         let yawBody, handBody;
         let grabConstraint, jointBody;
+
+        let textureLoader = new THREE.TextureLoader();
+        let decalMat;
 
         let crosshairStates = {
             look: 'fiber_manual_record',
@@ -302,6 +309,13 @@
         let spotLight, spotLightHelper, spotLightTarget;
 
         let keys = {};
+        let mouse = {};
+
+        let colt = {};
+
+        let listener = null;
+        let audioLoader = new THREE.AudioLoader();
+        let stepSound = null;
 
         const meshMap = new Map();
         
@@ -331,6 +345,7 @@
             let sceneGltf = await loadGLTF('assets/coltesting.glb', 1)
             scene.add(sceneGltf.scene);
 
+            
             // carSetup();
             
         }
@@ -509,6 +524,18 @@
 
             scene.fog = new THREE.Fog( 0x87ceeb, 1, 1000 );
 
+            textureLoader.load('assets/decal.png', function(texture) {
+                decalMat = new THREE.MeshBasicMaterial({ 
+                    map: texture, 
+                    transparent: true,
+                    depthTest: true,
+                    depthWrite: false,
+                    polygonOffset: true,
+                    polygonOffsetFactor: 1,
+                    wireframe: false
+                 });
+            });
+
         }
 
         function cameraSetup() {
@@ -525,13 +552,31 @@
 
             player.anim.grabDest = new THREE.Object3D();
             camera.add(player.anim.grabDest);
-            player.anim.grabDest.position.set(0, 0, -1);
+            player.anim.grabDest.position.set(0.1, 0, -0.4);
+            player.anim.grabDest.resetPosition = player.anim.grabDest.position.clone();
+            createDebugSphere(player.anim.grabDest.getWorldPosition(new THREE.Vector3()), 0.1, 0x00ff00);
+            console.log(player)
+
+            window.addEventListener('click', () => {
+                listener = new THREE.AudioListener();
+                camera.add(listener);
+
+                stepSound = new THREE.Audio(listener);
+                audioLoader.load('assets/sound/step1.mp3', function(buffer) {
+                    stepSound.setBuffer(buffer);
+                    stepSound.setLoop(false);
+                    stepSound.setVolume(0.5);
+                    // stepSound.play();
+                    player.yawObject.add(stepSound);
+                });
+            }, { once: true });
+
         }
 
         function rendererSetup() {
             // renderer
            
-            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true, stencilBuffer: true });
             renderer.setPixelRatio( window.devicePixelRatio );
             renderer.setSize( window.innerWidth, window.innerHeight );
             renderer.setAnimationLoop( animate );
@@ -688,7 +733,7 @@
 
             // star material
             starMaterial = new THREE.MeshStandardMaterial(
-                { map: starTexture, side: THREE.BackSide, transparent: true, opacity: 0, emissive: 0xffffff, emissiveIntensity: 50 } );
+                { map: starTexture, side: THREE.BackSide, transparent: true, opacity: 0, emissive: 0xffffff, emissiveIntensity: 100 } );
 
             const starGeometry = new THREE.SphereGeometry( 100,  8, 8 );
 
@@ -838,6 +883,9 @@
             player.pitchObject = controls.getObject().children[0];
             player.pitchObject.position.set(0, 1, 0);
 
+            window.addEventListener('click', () => {
+                controls.stepSound = stepSound;
+            }, { once: true })
             
             //heavy body is mesh called heavy_arm
             // let playerScene = await loadGLTF('assets/heavy.glb', 1)
@@ -939,6 +987,7 @@
                 if (pauseStartTime !== undefined) {
                     pausedTime += performance.now() - pauseStartTime;
                 }
+                pauseStartTime = undefined;
                 crosshair.style.display = null;
                 pauseMenu.style.display = 'none';
 
@@ -1011,14 +1060,30 @@
 
         }
         
-        function createObjects() {
+        async function createObjects() {
             // objects
             defaultMaterial = new THREE.MeshNormalMaterial();
             defaultGeometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 );
             defaultRadius = 1;
+            let defaultHitSfx;
+
+            window.addEventListener('click', () => {
+                defaultHitSfx = new THREE.PositionalAudio( listener );
+                audioLoader.load( 'assets/sound/ricochet1.mp3', function( buffer ) {
+                    
+                    defaultHitSfx.setBuffer( buffer );
+                    defaultHitSfx.setRefDistance( 5 );
+                    defaultHitSfx.setVolume(0.5)
+                    // defaultHitSfx.play()
+                    scene.add(defaultHitSfx);
+                });
+                sphereMesh.hitSound = defaultHitSfx;
+
+            
+            }, { once: true });
 
             const floor = new THREE.Mesh(
-                new THREE.PlaneGeometry( 100, 100, 100, 100 ),
+                new THREE.PlaneGeometry( 50, 50, 50, 50 ),
                 new THREE.MeshStandardMaterial( { color: 0x808080, side: THREE.DoubleSide } )
             );
 
@@ -1028,18 +1093,28 @@
             floor.position.y = -1;
             scene.add( floor );
 
-            const groundBody = new CANNON.Body({
-                type: CANNON.Body.STATIC, // can also be achieved by setting the mass to 0
-                shape: new CANNON.Plane(),
+            const floorBody = new CANNON.Body({
+                mass: 0, // make it static
+                shape: new CANNON.Box(new CANNON.Vec3(50, 0.1, 50)), // 20x2x20 size box
                 collisionFilterGroup: EVERYTHING_ELSE_GROUP,
-                collisionFilterMask: PLAYER_GROUP | EVERYTHING_ELSE_GROUP,
-            })
+                collisionFilterMask: EVERYTHING_ELSE_GROUP | PLAYER_GROUP,
+            });
+            floorBody.position.set(0, -1.1, 0); // m
+            world.addBody(floorBody);
 
-            groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0) // make it face up
-            groundBody.position.set(0, -1, 0) // m
 
-            groundBody.name = 'floor'
-            world.addBody(groundBody)
+            // const groundBody = new CANNON.Body({
+            //     type: CANNON.Body.STATIC, // can also be achieved by setting the mass to 0
+            //     shape: new CANNON.Plane(),
+            //     collisionFilterGroup: EVERYTHING_ELSE_GROUP,
+            //     collisionFilterMask: PLAYER_GROUP | EVERYTHING_ELSE_GROUP,
+            // })
+
+            // groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0) // make it face up
+            // groundBody.position.set(0, -3, 0) // m
+
+            // groundBody.name = 'floor'
+            // world.addBody(groundBody)
 
             const sphereBody = new CANNON.Body({
                 mass: 5, // kg
@@ -1075,6 +1150,301 @@
 
             meshMap.set(boxBody, box)
             
+            //gun
+            
+            let coltScene = await loadGLTF('assets/colt_1911.glb', 1)
+            scene.add(coltScene.scene)
+            console.log(coltScene)
+            colt.object = coltScene.scene.children[0];
+            colt.object.receiveShadow = true;
+            colt.object.castShadow = true;
+            colt.fireFrom = colt.object.children[0];
+            colt.flashObj = colt.object.children[1];
+            colt.muzzle = colt.object.children[2];
+            colt.muzzle.intensity = 0;
+            colt.muzzle.castShadow = true;
+            colt.flashObj.visible = false;
+            colt.flashObj.backface = true;
+            
+            
+            for (let [body, mesh] of meshMap.entries()) {
+                if (mesh === colt.object) {
+                    colt.body = body;
+                    break;
+                }
+            }
+            colt.body.allowSleep = false;
+            colt.body.collisionFilterGroup = EVERYTHING_ELSE_GROUP;
+            colt.body.collisionFilterMask = PLAYER_GROUP | EVERYTHING_ELSE_GROUP;
+
+            window.addEventListener('click', () => {
+                console.log('loaded sound')
+                colt.fireSound = new THREE.PositionalAudio( listener );
+                audioLoader.load( 'assets/sound/colt_fire.mp3', function( buffer ) {
+                    
+                    colt.fireSound.setBuffer( buffer );
+                    colt.fireSound.setRefDistance( 20 );
+                    // colt.fireSound.loop = true
+
+                    // colt.fireSound.play()
+                    colt.fireFrom.add( colt.fireSound );
+                });
+                colt.ricochetSound = new THREE.PositionalAudio( listener );
+                audioLoader.load( 'assets/sound/ricochet2.mp3', function( buffer ) {
+                    
+                    colt.ricochetSound.setBuffer( buffer );
+                    colt.ricochetSound.setRefDistance( 5 );
+                    colt.ricochetSound.setVolume(0.5)
+                    // colt.ricochetSound.play()
+                    scene.add(colt.ricochetSound);
+                });
+            
+            }, { once: true });
+
+            
+
+            colt.grabReset = new THREE.Vector3(0.2, -0.2, -0.4);
+            colt.adsPosition = new THREE.Vector3(0, -0.125, -0.4);
+            colt.grabPosition = colt.grabReset;
+
+            colt.adsConstraint = null;
+
+            colt.equip = function() {
+                colt.body.originalMass = colt.body.mass;
+
+                // colt.body.collisionResponse = false;
+                colt.body.mass = 0
+                colt.body.collisionFilterGroup = PLAYER_GROUP;
+                colt.body.collisionFilterMask = EVERYTHING_ELSE_GROUP;
+
+                player.equipped = colt;
+                // player.equipped.euler = new THREE.Euler(0, -Math.PI/2, 0);
+                player.anim.grabDest.position.copy(player.equipped.grabPosition);
+                player.anim.grabDest.body.position.copy(player.anim.grabDest.getWorldPosition(new THREE.Vector3()))
+
+                colt.body.position.copy(player.anim.grabDest.getWorldPosition(new THREE.Vector3()));
+                // colt.body.position.vadd(new CANNON.Vec3(0, -0.2, -0.1), colt.body.position);
+                // colt.body.quaternion.copy(player.anim.grabDest.getWorldQuaternion(new THREE.Quaternion()));
+
+                colt.body.quaternion.copy(player.anim.grabDest.body.quaternion);
+                // colt.body.quaternion.setFromEuler(0, -Math.PI/2, 0);
+                let rotationQuaternion = new CANNON.Quaternion();
+                rotationQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -Math.PI / 2);
+
+                // Multiply the colt body's quaternion by the rotation quaternion
+                colt.body.quaternion = colt.body.quaternion.mult(rotationQuaternion);
+
+                let constraint = new CANNON.LockConstraint(player.anim.grabDest.body, colt.body, { maxForce: 1 });
+                world.addConstraint(constraint);
+                player.equipped.constraint = constraint;
+
+                let handConstraint = new CANNON.PointToPointConstraint(player.ragdollHand, new CANNON.Vec3(0, 0, 0), colt.body, new CANNON.Vec3(0, 0, 0));
+
+                player.handConstraint = handConstraint;
+                // player.ragdollHand.mass = 0;
+                player.ragdollHand.position.copy(colt.body.position);
+                
+                world.addConstraint(handConstraint);
+
+                // world.addConstraint(grabConstraint)
+
+            }
+
+            colt.body.parent = colt
+
+            colt.canFire = true;
+            colt.fireDelay = 0.5;
+            colt.recoilMult = 0.02;
+            colt.recoilMultDefault = 0.02;
+
+            colt.click = function() {
+                if(colt.canFire && !colt.timeOut) {
+                    console.log(player.result.hasHit)
+                    if(player.result.hasHit) {
+                        let ray = player.result;
+                        let hitPointLocal = ray.hitPointWorld.vsub(ray.body.position)
+
+                        //draw a debugline at hitpoint world facing in the ray.hitNormalWorld direction
+                        // createDebugLine(ray.hitPointWorld, ray.hitPointWorld.vadd(ray.hitNormalWorld), 0xff0000, 1000);
+                        
+                        let parent = scene;
+                        
+                        let decalObj = decal(decalMat, 0.1, ray.hitPointWorld, ray.hitNormalWorld);
+
+                        // console.log(player.result.body)
+
+                        let ricochetSound = colt.ricochetSound;
+                        
+                        
+
+                        if(player.result.body.mass != 0) {
+                            
+                            parent = ray.body.mesh ? ray.body.mesh : meshMap.get(ray.body);
+
+                            // console.log(parent)
+
+                            ricochetSound = parent.hitSound ? parent.hitSound : ricochetSound;
+
+                            let localPosition = parent.worldToLocal(decalObj.position.clone());
+                            decalObj.position.copy(localPosition);
+
+                            let hitNormalWorldThree = new THREE.Vector3(ray.hitNormalWorld.x, ray.hitNormalWorld.y, ray.hitNormalWorld.z);
+                            let localHitNormal = parent.worldToLocal(hitNormalWorldThree.clone().add(ray.hitPointWorld)).sub(localPosition);
+                            decalObj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), localHitNormal);                            
+
+                            ray.body.wakeUp()
+                            console.log(ray)
+
+                            let directionVector = ray.body.position.vsub(ray.hitPointWorld);
+                            let length = Math.sqrt(directionVector.x * directionVector.x + directionVector.y * directionVector.y + directionVector.z * directionVector.z);
+                            let direction = new CANNON.Vec3(directionVector.x / length, directionVector.y / length, directionVector.z / length).scale(10);
+                            console.log(direction)
+
+                            ray.body.applyImpulse(direction, hitPointLocal)  
+
+                        }
+                        parent.add(decalObj);
+                        
+                        // console.log(ricochetSound)
+
+                        ricochetSound.position.set(ray.hitPointWorld.x, ray.hitPointWorld.y, ray.hitPointWorld.z);
+                        ricochetSound.setPlaybackRate(Math.random() * 0.2 + 0.9);
+                        ricochetSound.stop();
+                        ricochetSound.play();
+
+                        setTimeout(() => {
+                            parent.remove(decalObj);
+                        }, 5000);
+
+                    }
+
+                    // console.log(colt.fireSound)
+                    colt.fireSound.stop();
+                    // console.log(colt.object.getWorldPosition(new THREE.Vector3()))
+                    // colt.fireSound.position.set(colt.object.getWorldPosition(new THREE.Vector3()).x, colt.object.getWorldPosition(new THREE.Vector3()).y, colt.object.getWorldPosition(new THREE.Vector3()).z);
+                    let playbackRate = Math.random() * 0.2 + 0.9; // Random value between 0.9 and 1.1
+                    colt.fireSound.setPlaybackRate(playbackRate);
+
+                    colt.fireSound.play();
+
+                    //recoil
+                        
+                    colt.body.applyLocalImpulse(new CANNON.Vec3(7, 0, 0), new CANNON.Vec3(0, 0, 0));
+
+                    
+
+                    //pitch is always positive
+                    colt.recoilValuePitch = (Math.random() * 0.8 + 0.2) * colt.recoilMult
+                    //yaw can be positive or negative
+                    colt.recoilValueYaw = (((Math.random() - 0.5) * 2) * 0.5) * colt.recoilMult
+
+
+                    //rotate pitchobject and yawobject to simulate recoil
+                    player.pitchObject.rotation.x += colt.recoilValuePitch;
+                    player.yawObject.rotation.y += colt.recoilValueYaw;
+
+
+
+                    colt.muzzle.intensity = 20;
+                    colt.flashObj.visible = true;
+                    setTimeout(() => {
+                    colt.flashObj.visible = false;
+                    colt.muzzle.intensity = 0;
+                    }, 100);
+                    colt.canFire = false;
+
+                    if(!colt.canFire && !colt.timeOut) {
+                    colt.timeOut = true
+                    setTimeout(() => {
+                        colt.canFire = true;
+                        colt.timeOut = false;
+                    }, colt.fireDelay * 1000);
+
+                    }
+                }
+                
+              
+                
+                
+            }
+
+            colt.rightClick = function() {
+                player.equipped.grabPosition = player.equipped.adsPosition;
+
+                if(colt.adsConstraint == null) {
+                    let lhConstraint = new CANNON.PointToPointConstraint(player.ragdollLeftHand, new CANNON.Vec3(0, 0, 0), colt.body, new CANNON.Vec3(0, 0, 0));
+                    player.ragdollLeftHand.position.copy(colt.body.position);
+                    world.addConstraint(lhConstraint);
+                    colt.adsConstraint = lhConstraint;
+                    colt.recoilMult = colt.recoilMult / 2;
+                }
+                
+            }
+
+            console.log(colt)
+
+
+        }
+
+        function decal(material, scale, position, rotation) {
+            let transparentMaterial = new THREE.MeshBasicMaterial({transparent: true, opacity: 0});
+            let materials = [
+            transparentMaterial, // left
+                transparentMaterial, // right
+                transparentMaterial, // top
+                transparentMaterial, // bottom
+                material, // back
+                transparentMaterial // front
+            ];
+            let decal = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.01), materials);
+            decal.position.copy(position);
+            decal.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), new THREE.Vector3(rotation.x, rotation.y, rotation.z));
+            decal.scale.set(scale, scale, scale);
+            
+            return decal;
+        }
+
+        function unequip() {
+            if(player.equipped) {
+                player.equipped.body.mass = player.equipped.body.originalMass;
+                player.equipped.body.collisionResponse = true;
+                player.equipped.body.collisionFilterGroup = EVERYTHING_ELSE_GROUP;
+                player.equipped.body.collisionFilterMask = PLAYER_GROUP | EVERYTHING_ELSE_GROUP;
+                
+                player.anim.grabDest.position.copy(player.anim.grabDest.resetPosition);
+
+                world.removeConstraint(player.handConstraint);
+                world.removeConstraint(player.equipped.constraint);
+                player.handConstraint = player.resetHandConstraint;
+
+                player.equipped = null;
+            }
+        }
+
+        function equip(object) {
+             
+            console.log('equipping')
+            isGrabbing = false; 
+            removegrabConstraint();
+            world.removeConstraint(player.handConstraint);
+
+            object.parent.equip();
+            grabbedObject = null;
+        }
+
+        function holdEquipped() {
+            if(!player.equipped) return;
+
+            // player.equipped.fireSound.position = player.equipped.fireFrom.getWorldPosition(new THREE.Vector3());
+            
+            player.equipped.body.quaternion.copy(player.anim.grabDest.body.quaternion);
+            player.anim.grabDest.position.copy(player.equipped.grabPosition);
+
+            let rotationQuaternion = new CANNON.Quaternion();
+            rotationQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -Math.PI / 2);
+
+            player.equipped.body.quaternion = player.equipped.body.quaternion.mult(rotationQuaternion);
+            
         }
 
 
@@ -1092,8 +1462,22 @@
                 keys[event.code] = false;
             };
 
+            let mouseDownListener = function(event) {
+                if (isPaused) return;
+                event.preventDefault();
+                mouse[event.button] = true;
+            }
+
+            let mouseUpListener = function(event) {
+                if (isPaused) return;
+                event.preventDefault();
+                mouse[event.button] = false;
+            }
+
             window.addEventListener('keydown', keyDownListener);
             window.addEventListener('keyup', keyUpListener);
+            window.addEventListener('mousedown', mouseDownListener);
+            window.addEventListener('mouseup', mouseUpListener);
 
             window.addEventListener('wheel', function(event) {
                 if (event.deltaY < 0) {
@@ -1142,12 +1526,11 @@
             player.playerBody = playerBody
             // playerBody.fixedRotation = true
             // playerBody.updateMassProperties()
-            
 
             
             // playerBody.position.set(-8, 5, 0)
             
-            playerBody.linearDamping = 0.99
+            playerBody.linearDamping = 0.9
             playerBody.angularDamping = 0.99
             playerBody.allowSleep = false
 
@@ -1156,7 +1539,7 @@
             world.addBody(playerBody)
 
             player.anim.grabDest.body = new CANNON.Body({ mass: 0, collisionResponse: false})
-            player.anim.grabDest.body.addShape(new CANNON.Box(new CANNON.Vec3(0.1, 0.1, 0.1)))
+            player.anim.grabDest.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01, 0.01, 0.01)))
             player.anim.grabDest.body.position.set(0, 0, 0)
             world.addBody(player.anim.grabDest.body)
         }
@@ -1167,117 +1550,184 @@
         let accumulatedTime = 0;
 
         function animate() {
-            
+            if(isPaused) return;
             // console.log(dt)
+            // console.log(controls.enabled)
 
             if (controls.enabled) {
-                if(isPaused) return;
+                
            
                 const time = (performance.now() - pausedTime) / 1000
                 const dt = time - lastCallTime
                 lastCallTime = time
 
-                accumulatedTime += dt;
+                // accumulatedTime += dt;
 
-                timeStep = (1 / (1/dt)) < 1/30 ? 1 / (1/dt) : 1/30;
+                // timeStep = (1 / (1/dt)) < 1/30 ? 1 / (1/dt) : 1/30;
+                // console.log(accumulatedTime >= timeStep, accumulatedTime, timeStep)
 
-                if(accumulatedTime >= timeStep) {
+                for (const [body, mesh] of meshMap) {
+                    body.mesh = mesh;
+                    mesh.position.copy(body.position);
+                    mesh.quaternion.copy(body.quaternion);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                }
+                
+                mixers.forEach(mixer => mixer.update(dt))
 
-                    for (const [body, mesh] of meshMap) {
-                        mesh.position.copy(body.position)
-                        mesh.quaternion.copy(body.quaternion)
-                        mesh.castShadow = true
-                        mesh.receiveShadow = true
-                    }
-                    
-                    mixers.forEach(mixer => mixer.update(dt))
+                updateSunPosition(lastCallTime);
 
-                    updateSunPosition(lastCallTime);
+                // if(player.currentAction.time >= 1) {
+                //     player.currentAction.stop();
+                //     player.currentAction = null;
+                // }
 
-                    // if(player.currentAction.time >= 1) {
-                    //     player.currentAction.stop();
-                    //     player.currentAction = null;
-                    // }
+                // updateSunPosition(time)
 
-                    // updateSunPosition(time)
+                // cubeCamera.update(renderer, scene)
 
-                    // cubeCamera.update(renderer, scene)
+                // spotLightHelper.update()
 
-                    // spotLightHelper.update()
+                // sunHelper.update()
 
-                    // sunHelper.update()
+                if(keys['KeyL']) {
+                    spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
+                    keys['KeyL'] = false;
+                }
+                if(keys['KeyE']) {
+                    grabObjectCheck(grabBody);
+                    keys['KeyE'] = false;
+                }
 
-                    if(keys['KeyF']) {
-                        spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
+                if(keys['KeyF']) {
+                    if(player.equipped === null) {
+                        if(grabbedObject && grabbedObject.parent && grabbedObject.parent.equip) {
+                            equip(grabbedObject);
+                        } else {
+                            if(player.equipTest) {
+                                equip(player.equipTest);
+                            }
+                        }
+                        keys['KeyF'] = false; 
+                    } else if(player.equipped) {
+                        unequip();
                         keys['KeyF'] = false;
                     }
-                    if(keys['KeyE']) {
-                        grabObjectCheck(grabBody);
-                        keys['KeyE'] = false;
+                }
+
+                if(keys['KeyC']) {
+                    player.crouching = !player.crouching;
+                    controls.velocityFactor = player.crouching ? 0.1 : 0.5;
+                    keys['KeyC'] = false;
+                }
+
+                if(keys['Space']) {
+                    console.log(controls.isJumping, controls.jumpPreload)
+                    if(controls.isJumping) {
+                        controls.jumpPreload = true;
                     }
 
-                    if(keys['KeyC']) {
-                        player.crouching = !player.crouching;
-                        keys['KeyC'] = false;
-                    }
-
-                    player.pitchObject.position.y = player.crouching ? Math.max(player.pitchObject.position.y - 0.01, 0.5) : Math.min(player.pitchObject.position.y + 0.01, 1);
-
-                    if(controls.canJump === false && playerBody.velocity.y <= 0 && playerBody.velocity.y >= -50) {
-                        playerBody.velocity.y -= 0.1 * (-playerBody.velocity.y / 3)
-                    }
-                
-
-                    outlineRaycast();
-                    
-                    moveGrabbedObject()
-
-                    
-                
-                    player.anim.grabDest.body.position.copy(player.anim.grabDest.getWorldPosition(new THREE.Vector3()))
-                    player.anim.grabDest.body.velocity.copy(playerBody.velocity)
-
-                    yawBody.position.copy(player.pitchObject.getWorldPosition(new THREE.Vector3()));
-                    yawBody.velocity.copy(playerBody.velocity);
-
-                    const playerPitchRotation = player.yawObject.rotation;
-
-                    yawBody.quaternion.setFromEuler(0, playerPitchRotation.y, 0, 'XYZ');
-
-                    const forwardQuaternion = new CANNON.Quaternion();
-                    forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
-                    yawBody.quaternion = yawBody.quaternion.mult(forwardQuaternion);
-
-                    const horizontalQuaternion = new CANNON.Quaternion();
-                    horizontalQuaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                    yawBody.quaternion = yawBody.quaternion.mult(horizontalQuaternion);
-
-                    //we want to move the player.hand in and out with the scroll wheel
-                    if(scrollDirection !== 0) {
-                        player.hand.position.z > -50 ? player.hand.position.z += scrollDirection : player.hand.position.z = -50;
-                        console.log(player.hand.position.z)
-                        // if(player.hand.position.z > 0) player.hand.position.z = -1;
-                        if(player.hand.position.z >= -1) player.hand.position.z = -1;
-                        scrollDirection = 0;
-                        
-                    }
-
-                    handBody.position.copy(player.hand.getWorldPosition(new THREE.Vector3()));
-                    handBody.velocity.copy(playerBody.velocity);
-
-                
-
-                    starMesh.position.copy(controls.getObject().position);
-
-                    
-
-                    controls.update(dt)
-                    controls.quaternion.normalize()
-                    // renderer.render(scene, camera)
-
-                    accumulatedTime = 0;
+                } else {
+                    controls.jumpPreload = false;
 
                 }
+
+                if(mouse[0]) {
+                    if(player.equipped) {
+                        player.equipped.click();
+                        // mouse[0] = false;
+                    }
+                }
+                
+                if(mouse[2]) {
+                    if(player.equipped) {
+                        player.equipped.rightClick();
+                    }
+                } else {
+                    if(player.equipped) {
+                        player.equipped.grabPosition = player.equipped.grabReset;
+                        if(player.equipped.adsConstraint) {
+                            world.removeConstraint(player.equipped.adsConstraint);
+                            player.equipped.adsConstraint = null;
+                        }
+                        player.equipped.recoilMult = player.equipped.recoilMultDefault
+                    }
+                }
+
+                if(listener != null) {
+                    if(controls.moveForward || controls.moveBackward || controls.moveLeft || controls.moveRight) {
+                        // console.log(controls.isJumping)
+                        if(!controls.isJumping) {
+                            stepSound.isPlaying ? null : stepSound.play();
+                        } 
+                    }
+                }
+                
+
+                player.pitchObject.position.y = player.crouching ? Math.max(player.pitchObject.position.y - 0.01, 0.5) : Math.min(player.pitchObject.position.y + 0.01, 1);
+
+                if(playerBody.velocity.y <= 0 && playerBody.velocity.y >= -50) {
+                    playerBody.velocity.y -= 0.1 * (Math.abs(playerBody.velocity.y) /4);
+                }
+            
+
+                outlineRaycast();
+                
+                moveGrabbedObject()
+
+                holdEquipped();
+
+                // createDebugSphere(player.anim.grabDest.getWorldPosition(new THREE.Vector3()), 0.1, 0x00ff00);
+
+
+            
+                player.anim.grabDest.body.position.copy(player.anim.grabDest.getWorldPosition(new THREE.Vector3()))
+                player.anim.grabDest.body.quaternion.copy(player.anim.grabDest.getWorldQuaternion(new THREE.Quaternion()))
+                player.anim.grabDest.body.velocity.copy(playerBody.velocity)
+
+                yawBody.position.copy(player.pitchObject.getWorldPosition(new THREE.Vector3()));
+                yawBody.quaternion.copy(player.pitchObject.getWorldQuaternion(new THREE.Quaternion()));
+                yawBody.velocity.copy(playerBody.velocity);
+
+                const playerPitchRotation = player.yawObject.rotation;
+
+                yawBody.quaternion.setFromEuler(0, playerPitchRotation.y, 0, 'XYZ');
+
+                const forwardQuaternion = new CANNON.Quaternion();
+                forwardQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI);
+                yawBody.quaternion = yawBody.quaternion.mult(forwardQuaternion);
+
+                const horizontalQuaternion = new CANNON.Quaternion();
+                horizontalQuaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                yawBody.quaternion = yawBody.quaternion.mult(horizontalQuaternion);
+
+                //we want to move the player.hand in and out with the scroll wheel
+                if(scrollDirection !== 0) {
+                    player.hand.position.z > -50 ? player.hand.position.z += scrollDirection : player.hand.position.z = -50;
+                    console.log(player.hand.position.z)
+                    // if(player.hand.position.z > 0) player.hand.position.z = -1;
+                    if(player.hand.position.z >= -1) player.hand.position.z = -1;
+                    scrollDirection = 0;
+                    
+                }
+
+                handBody.position.copy(player.hand.getWorldPosition(new THREE.Vector3()));
+                handBody.velocity.copy(playerBody.velocity);
+
+            
+
+                starMesh.position.copy(controls.getObject().position);
+
+                
+
+                controls.update(dt)
+                controls.quaternion.normalize()
+                // renderer.render(scene, camera)
+
+                // accumulatedTime = 0;
+
+                
 
                 world.step(timeStep, dt)
                 cannonDebugger.update()
@@ -1299,18 +1749,19 @@
             return direction;
         }
 
-        function playerRaycast() {
+        function playerRaycast(fromLocation, distance = 10) {
             // Create a direction vector
-            const direction = getCameraFacing();
+            // const direction = getCameraFacing();
+            const direction = camera.getWorldDirection(new THREE.Vector3());
 
             // Get the camera's world position
-            const cameraPosition = new THREE.Vector3();
-            controls.getObject().children[0].children[0].getWorldPosition(cameraPosition);
+            // const cameraPosition = new THREE.Vector3();
+            // controls.getObject().children[0].children[0].getWorldPosition(cameraPosition);
             
             // Create a ray starting from the player position
             const cannonDirection = new CANNON.Vec3(direction.x, direction.y, direction.z);
-            const from = new CANNON.Vec3(cameraPosition.x, cameraPosition.y, cameraPosition.z - 0.1);
-            const to = from.vadd(cannonDirection.scale(10));
+            const from = new CANNON.Vec3(fromLocation.x, fromLocation.y, fromLocation.z);
+            const to = from.vadd(cannonDirection.scale(distance));
         
             // Draw a line from the player's position in the direction they're facing
             // const lineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(from.x, from.y, from.z), new THREE.Vector3(to.x, to.y, to.z)]);
@@ -1318,21 +1769,26 @@
             // const line = new THREE.Line(lineGeometry, lineMaterial);
             // scene.add(line);
         
-            // Remove the line after a certain amount of time
-            // setTimeout(() => scene.remove(line), 500);
-        
+            // // Remove the line after a certain amount of time
+            // setTimeout(() => scene.remove(line), 500);            
+
             const result = new CANNON.RaycastResult();
             world.raycastClosest(from, to, {collisionFilterMask: EVERYTHING_ELSE_GROUP, skipBackfaces: true}, result);
-        
+            
+            player.result = result;
+
             return result;
         }
 
         let castBody = null;
 
         function outlineRaycast() {
-            // if(grabbedObject) {setCrosshair('grab'); return;}
-            let cast = playerRaycast()
-            // if(castBody === cast.body) return;
+          
+            let cameraPosition = new THREE.Vector3();
+            controls.getObject().children[0].children[0].getWorldPosition(cameraPosition);
+   
+
+            let cast = playerRaycast(cameraPosition, 100);
 
            
             castBody = cast.body;
@@ -1349,7 +1805,7 @@
                 outlinePass.selectedObjects = [castMesh];
                 grabBody = castBody;
                 grabBody.cast = cast;
-                setCrosshair('grab');
+                equipTest(castBody);
             } else {
                 outlinePass.selectedObjects = [];
                 grabBody = null;
@@ -1358,6 +1814,9 @@
         }
 
         function grabObjectCheck(body) {
+            if(player.equipped && body === null) return;
+            if(player.equipped && body !== player.equipped.body && body !== null) unequip();
+
             if(body === null) {grabbedObject = null; isGrabbing = false; removegrabConstraint(); world.removeConstraint(player.handConstraint); return;}
             if(body.mass === 0) return;
             
@@ -1399,7 +1858,7 @@
         }
 
         function createDebugSphere(position, timeout = 5000) {
-            const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const sphereGeometry = new THREE.SphereGeometry(0.15, 32, 32);
             const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
             const sphereMesh = new THREE.Mesh(sphereGeometry, sphereMaterial);
             sphereMesh.position.copy(position);
@@ -1407,6 +1866,17 @@
 
             setTimeout(() => {
                 scene.remove(sphereMesh);
+            }, timeout);
+        }
+
+        function createDebugLine(from, to, color = 0xff0000, timeout = 5000) {
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([from, to]);
+            const lineMaterial = new THREE.LineBasicMaterial({color: color});
+            const line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+
+            setTimeout(() => {
+                scene.remove(line);
             }, timeout);
         }
 
@@ -1456,9 +1926,24 @@
             });
         }
 
+        function equipTest(body) {
+            if(body === null) return;
+            if(body.mass === 0) return;
+            if(player.equipped) return;
+            if(body.parent && body.parent.equip) {
+                setCrosshair('interact');
+                player.equipTest = body;
+            } else {
+                setCrosshair('grab');
+                player.equipTest = null;
+            }
+        }
 
         function moveGrabbedObject() {
             if(grabbedObject) {
+                if(grabbedObject.parent && grabbedObject.parent.equip) {
+                    setCrosshair('interact');
+                }
                 // let destination = player.hand.getWorldPosition(new THREE.Vector3());
                 // //add grabDest to destination relative to camerafacing
                 // destination.add(getCameraFacing().multiplyScalar(-player.grabDest.z));
@@ -1499,6 +1984,15 @@
                     
 
                     gltf.scene.traverse( function ( child ) {
+                        if(child.isLight) {
+                            child.castShadow = true;
+                            child.shadow.bias = -0.0001;
+                            child.shadow.mapSize.width = 1024;
+                            child.shadow.mapSize.height = 1024;
+                            child.shadow.camera.near = 0.5;
+                            child.shadow.camera.far = 500;
+                        }
+
                         if ( child.isMesh ) {
                             if (child.material.isMeshStandardMaterial) {
                                 // console.log(child.material);
@@ -1703,7 +2197,7 @@
         }
 
 
-        function ragdollSetup(isPlayer = false, scale = 1, mass = 1) {
+        async function ragdollSetup(isPlayer = false, scale = 1, mass = 1) {
             const { bodies, constraints } = createRagdoll({
                 scale: scale,
                 angle: Math.PI / 2,
@@ -1729,6 +2223,47 @@
             })
 
             console.log(bodies)
+
+            // let gloveLeftScene = await loadGLTF('assets/glove1.glb', 1)
+            // let gloveLeft = gloveLeftScene.scene.children[0];
+            // console.log(gloveLeft)
+            // scene.add(gloveLeftScene.scene);
+            // gloveLeft.position.set(0, 0, 0);
+            // gloveLeft.scale.set(0.2, 0.2, 0.2);
+            // meshMap.set(player.lowerLeftArm, gloveLeft);
+
+            // let gloveRight = gloveLeft.clone();
+            // gloveRight.position.set(0, 0, 0);
+            // gloveRight.scale.set(-0.2, 0.2, 0.2);
+            // scene.add(gloveRight);
+            // meshMap.set(player.lowerRightArm, gloveRight);
+
+            let bootLeftScene = await loadGLTF('assets/boot1.glb', 1);
+            let bootLeft = bootLeftScene.scene.children[0];
+            bootLeft.position.set(0, 0, 0);
+            bootLeft.scale.set(0.4, 0.4, -0.4);
+            scene.add(bootLeftScene.scene);
+            meshMap.set(player.lowerLeftLeg, bootLeft);
+
+            let bootRight = bootLeft.clone();
+            bootRight.position.set(0, 0, 0);
+            bootRight.scale.set(-0.4, 0.4, -0.4);
+            scene.add(bootRight);
+            meshMap.set(player.lowerRightLeg, bootRight);
+
+            let upperLeftArmScene = await loadGLTF('assets/upperarm1.glb', 1);
+            let upperLeftArm = upperLeftArmScene.scene.children[0];
+            upperLeftArm.position.set(0, 0, 0);
+            upperLeftArm.scale.set(-0.3, 0.3, -0.3);
+            scene.add(upperLeftArmScene.scene);
+            meshMap.set(player.upperLeftArm, upperLeftArm);
+
+            let upperRightArm = upperLeftArm.clone();
+            upperRightArm.position.set(0, 0, 0);
+            upperRightArm.scale.set(0.3, 0.3, -0.3);
+            scene.add(upperRightArm);
+            meshMap.set(player.upperRightArm, upperRightArm);
+
             let ragdollChestBody = bodies.find(body => body.name === 'upperBody')
             //rotate to face opposite y
             // ragdollChestBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI)
@@ -1752,9 +2287,12 @@
             let ragdollHand = bodies.find(body => body.name === 'hand')
             player.ragdollHand = ragdollHand
 
+            let ragdollLeftHand = bodies.find(body => body.name === 'leftHand')
+            player.ragdollLeftHand = ragdollLeftHand
             
             if(isPlayer) {
-                const handConstraint = new CANNON.DistanceConstraint(player.ragdollHand, player.anim.grabDest.body, 0.7, 0.1)
+                const handConstraint = new CANNON.DistanceConstraint(player.ragdollHand, player.anim.grabDest.body, 0.1, 0.01)
+                player.resetHandConstraint = handConstraint;
                 player.handConstraint = handConstraint;
             }
             
@@ -1781,6 +2319,7 @@
             const lowerArmSize = 0.2 * scale
             const neckLength = 0.1 * scale
             const headRadius = 0.25 * scale
+            const handRadius = 0.1 * scale
             const upperBodyLength = 0.6 * scale
             const pelvisLength = 0.4 * scale
             const upperLegLength = 0.5 * scale
@@ -1795,6 +2334,7 @@
             const lowerArmShape = new CANNON.Box(
             new CANNON.Vec3(lowerArmLength * 0.5, lowerArmSize * 0.5, lowerArmSize * 0.5)
             )
+            const handShape = new CANNON.Sphere(handRadius)
             const upperBodyShape = new CANNON.Box(
             new CANNON.Vec3(shouldersDistance * 0.5, lowerArmSize * 0.5, upperBodyLength * 0.5)
             )
@@ -1822,12 +2362,14 @@
             bodies.push(lowerLeftLeg)
             bodies.push(lowerRightLeg)
 
-            let lowerLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
-            let lowerRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
-            scene.add(lowerLeftLegMesh);
-            scene.add(lowerRightLegMesh);
-            meshMap.set(lowerLeftLeg, lowerLeftLegMesh);
-            meshMap.set(lowerRightLeg, lowerRightLegMesh);
+            player.lowerLeftLeg = lowerLeftLeg;
+            player.lowerRightLeg = lowerRightLeg;
+            // let lowerLeftLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
+            // let lowerRightLegMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerLegSize, lowerLegSize, lowerLegLength), ragdollMeshMaterial());
+            // scene.add(lowerLeftLegMesh);
+            // scene.add(lowerRightLegMesh);
+            // meshMap.set(lowerLeftLeg, lowerLeftLegMesh);
+            // meshMap.set(lowerRightLeg, lowerRightLegMesh);
 
             // Upper legs
             const upperLeftLeg = new CANNON.Body({
@@ -1864,9 +2406,9 @@
             })
             pelvis.addShape(pelvisShape)
             bodies.push(pelvis)
-            let pelvisMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, pelvisLength), ragdollMeshMaterial());
-            scene.add(pelvisMesh);
-            meshMap.set(pelvis, pelvisMesh);
+            // let pelvisMesh = new THREE.Mesh(new THREE.BoxGeometry(shouldersDistance, lowerArmSize, pelvisLength), ragdollMeshMaterial());
+            // scene.add(pelvisMesh);
+            // meshMap.set(pelvis, pelvisMesh);
 
 
             // Upper body
@@ -1885,13 +2427,13 @@
             // meshMap.set(upperBody, upperBodyMesh);
 
             // Head
-            const head = new CANNON.Body({
-            mass: mass,
-            position: new CANNON.Vec3(0, 0, upperBody.position.z + upperBodyLength / 2 + headRadius + neckLength),
-            })
-            head.addShape(headShape)
-            head.name = 'head';
-            bodies.push(head)
+            // const head = new CANNON.Body({
+            // mass: mass,
+            // position: new CANNON.Vec3(0, 0, upperBody.position.z + upperBodyLength / 2 + headRadius + neckLength),
+            // })
+            // head.addShape(headShape)
+            // head.name = 'head';
+            // bodies.push(head)
             // let headMesh = new THREE.Mesh(new THREE.SphereGeometry(headRadius), ragdollMeshMaterial());
             // scene.add(headMesh);
             // meshMap.set(head, headMesh);
@@ -1917,12 +2459,14 @@
             upperRightArm.addShape(upperArmShape)
             bodies.push(upperLeftArm)
             bodies.push(upperRightArm)
-            let upperLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
-            let upperRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
-            scene.add(upperLeftArmMesh);
-            scene.add(upperRightArmMesh);
-            meshMap.set(upperLeftArm, upperLeftArmMesh);
-            meshMap.set(upperRightArm, upperRightArmMesh);
+            player.upperLeftArm = upperLeftArm;
+            player.upperRightArm = upperRightArm;
+            // let upperLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
+            // let upperRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(upperArmLength, upperArmSize, upperArmSize), ragdollMeshMaterial());
+            // scene.add(upperLeftArmMesh);
+            // scene.add(upperRightArmMesh);
+            // meshMap.set(upperLeftArm, upperLeftArmMesh);
+            // meshMap.set(upperRightArm, upperRightArmMesh);
 
             // Lower arms
             const lowerLeftArm = new CANNON.Body({
@@ -1945,7 +2489,8 @@
             lowerRightArm.addShape(lowerArmShape)
             bodies.push(lowerLeftArm)
             bodies.push(lowerRightArm)
-            lowerRightArm.name = 'hand';
+            player.lowerLeftArm = lowerLeftArm;
+            player.lowerRightArm = lowerRightArm;
             let lowerLeftArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), ragdollMeshMaterial());
             let lowerRightArmMesh = new THREE.Mesh(new THREE.BoxGeometry(lowerArmLength, lowerArmSize, lowerArmSize), ragdollMeshMaterial());
             scene.add(lowerLeftArmMesh);
@@ -1953,16 +2498,70 @@
             meshMap.set(lowerLeftArm, lowerLeftArmMesh);
             meshMap.set(lowerRightArm, lowerRightArmMesh);
 
+            //Hands
+            let leftHand = new CANNON.Body({
+                mass: mass,
+                position: new CANNON.Vec3(
+                    lowerLeftArm.position.x + lowerArmLength,
+                    0,
+                    lowerLeftArm.position.z
+                ),
+            });
+            let rightHand = new CANNON.Body({
+                mass: mass,
+                position: new CANNON.Vec3(
+                    lowerRightArm.position.x - lowerArmLength,
+                    0,
+                    lowerRightArm.position.z
+                ),
+            });
+            leftHand.addShape(handShape);
+            rightHand.addShape(handShape);
+            bodies.push(leftHand);
+            bodies.push(rightHand);
+            rightHand.name = 'hand';
+            leftHand.name = 'leftHand';
+
+            player.leftHand = leftHand;
+            player.rightHand = rightHand;
+            let leftHandMesh = new THREE.Mesh(new THREE.SphereGeometry(handRadius), ragdollMeshMaterial());
+            let rightHandMesh = new THREE.Mesh(new THREE.SphereGeometry(handRadius), ragdollMeshMaterial());
+            scene.add(leftHandMesh);
+            scene.add(rightHandMesh);
+            meshMap.set(leftHand, leftHandMesh);
+            meshMap.set(rightHand, rightHandMesh);
+
+            //wrist joints
+            let leftWristJoint = new CANNON.ConeTwistConstraint(leftHand, lowerLeftArm, {
+                pivotA: new CANNON.Vec3(0, 0, 0),
+                pivotB: new CANNON.Vec3(lowerArmLength, 0, 0),
+                axisA: CANNON.Vec3.UNIT_X,
+                axisB: CANNON.Vec3.UNIT_X,
+                angle: Math.PI,
+                twistAngle: Math.PI,
+            });
+            constraints.push(leftWristJoint);
+
+            let rightWristJoint = new CANNON.ConeTwistConstraint(rightHand, lowerRightArm, {
+                pivotA: new CANNON.Vec3(0, 0, 0),
+                pivotB: new CANNON.Vec3(-lowerArmLength, 0, 0),
+                axisA: CANNON.Vec3.UNIT_X,
+                axisB: CANNON.Vec3.UNIT_X,
+                angle: Math.PI,
+                twistAngle: Math.PI,
+            });
+            constraints.push(rightWristJoint);
+            
             // Neck joint
-            const neckJoint = new CANNON.ConeTwistConstraint(head, upperBody, {
-            pivotA: new CANNON.Vec3(0, 0, -headRadius - neckLength / 2),
-            pivotB: new CANNON.Vec3(0, 0, upperBodyLength / 2),
-            axisA: CANNON.Vec3.UNIT_Z,
-            axisB: CANNON.Vec3.UNIT_Z,
-            angle: 0,
-            twistAngle: 0,
-            })
-            constraints.push(neckJoint)
+            // const neckJoint = new CANNON.ConeTwistConstraint(head, upperBody, {
+            // pivotA: new CANNON.Vec3(0, 0, -headRadius - neckLength / 2),
+            // pivotB: new CANNON.Vec3(0, 0, upperBodyLength / 2),
+            // axisA: CANNON.Vec3.UNIT_Z,
+            // axisB: CANNON.Vec3.UNIT_Z,
+            // angle: 0,
+            // twistAngle: Math.PI / 2,
+            // })
+            // constraints.push(neckJoint)
 
             // Knee joints
             const leftKneeJoint = new CANNON.ConeTwistConstraint(lowerLeftLeg, upperLeftLeg, {
@@ -1970,16 +2569,16 @@
             pivotB: new CANNON.Vec3(0, 0, -upperLegLength / 2),
             axisA: CANNON.Vec3.UNIT_Z,
             axisB: CANNON.Vec3.UNIT_Z,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 16,
             })
             const rightKneeJoint = new CANNON.ConeTwistConstraint(lowerRightLeg, upperRightLeg, {
             pivotA: new CANNON.Vec3(0, 0, lowerLegLength / 2),
             pivotB: new CANNON.Vec3(0, 0, -upperLegLength / 2),
             axisA: CANNON.Vec3.UNIT_Z,
             axisB: CANNON.Vec3.UNIT_Z,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 16,
             })
             constraints.push(leftKneeJoint)
             constraints.push(rightKneeJoint)
@@ -1990,16 +2589,16 @@
             pivotB: new CANNON.Vec3(shouldersDistance / 2, 0, -pelvisLength / 2),
             axisA: CANNON.Vec3.UNIT_Z,
             axisB: CANNON.Vec3.UNIT_Z,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 8,
             })
             const rightHipJoint = new CANNON.ConeTwistConstraint(upperRightLeg, pelvis, {
             pivotA: new CANNON.Vec3(0, 0, upperLegLength / 2),
             pivotB: new CANNON.Vec3(-shouldersDistance / 2, 0, -pelvisLength / 2),
             axisA: CANNON.Vec3.UNIT_Z,
             axisB: CANNON.Vec3.UNIT_Z,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 8,
             })
             constraints.push(leftHipJoint)
             constraints.push(rightHipJoint)
@@ -2021,15 +2620,16 @@
             pivotB: new CANNON.Vec3(-upperArmLength / 2, 0, 0),
             axisA: CANNON.Vec3.UNIT_X,
             axisB: CANNON.Vec3.UNIT_X,
-            angle: angleShoulders,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 2,
             })
             const rightShoulder = new CANNON.ConeTwistConstraint(upperBody, upperRightArm, {
             pivotA: new CANNON.Vec3(-shouldersDistance / 2, 0, upperBodyLength / 2),
             pivotB: new CANNON.Vec3(upperArmLength / 2, 0, 0),
             axisA: CANNON.Vec3.UNIT_X,
             axisB: CANNON.Vec3.UNIT_X,
-            angle: angleShoulders,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI / 2,
             })
             constraints.push(leftShoulder)
             constraints.push(rightShoulder)
@@ -2040,16 +2640,16 @@
             pivotB: new CANNON.Vec3(upperArmLength / 2, 0, 0),
             axisA: CANNON.Vec3.UNIT_X,
             axisB: CANNON.Vec3.UNIT_X,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI/8
             })
             const rightElbowJoint = new CANNON.ConeTwistConstraint(lowerRightArm, upperRightArm, {
             pivotA: new CANNON.Vec3(lowerArmLength / 2, 0, 0),
             pivotB: new CANNON.Vec3(-upperArmLength / 2, 0, 0),
             axisA: CANNON.Vec3.UNIT_X,
             axisB: CANNON.Vec3.UNIT_X,
-            angle,
-            twistAngle,
+            angle: Math.PI / 2,
+            twistAngle: Math.PI/8
             })
             constraints.push(leftElbowJoint)
             constraints.push(rightElbowJoint)
