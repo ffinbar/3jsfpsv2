@@ -970,7 +970,7 @@
             yawBody.position.set(0, 0, 0);
             world.addBody(yawBody);
 
-            ragdollSetup(true, 0.4, 0.01)
+            ragdollSetup(true, 0.5, 0.01)
 
 
             window.addEventListener('click', () => {
@@ -1259,7 +1259,7 @@
 
             colt.click = function() {
                 if(colt.canFire && !colt.timeOut) {
-                    console.log(player.result.hasHit)
+                    console.log(player.result)
                     if(player.result.hasHit) {
                         let ray = player.result;
                         let hitPointLocal = ray.hitPointWorld.vsub(ray.body.position)
@@ -1623,7 +1623,7 @@
                 }
 
                 if(keys['Space']) {
-                    console.log(controls.isJumping, controls.jumpPreload)
+                    // console.log(controls.isJumping, controls.jumpPreload)
                     if(controls.isJumping) {
                         controls.jumpPreload = true;
                     }
@@ -1665,7 +1665,7 @@
                 }
                 
 
-                player.pitchObject.position.y = player.crouching ? Math.max(player.pitchObject.position.y - 0.01, 0.5) : Math.min(player.pitchObject.position.y + 0.01, 1);
+                player.pitchObject.position.y = player.crouching ? Math.max(player.pitchObject.position.y - 0.01, 1) : Math.min(player.pitchObject.position.y + 0.01, 1.5);
 
                 if(playerBody.velocity.y <= 0 && playerBody.velocity.y >= -50) {
                     playerBody.velocity.y -= 0.1 * (Math.abs(playerBody.velocity.y) /4);
@@ -1769,11 +1769,11 @@
             // const line = new THREE.Line(lineGeometry, lineMaterial);
             // scene.add(line);
         
-            // // Remove the line after a certain amount of time
+            // // // Remove the line after a certain amount of time
             // setTimeout(() => scene.remove(line), 500);            
 
             const result = new CANNON.RaycastResult();
-            world.raycastClosest(from, to, {collisionFilterMask: EVERYTHING_ELSE_GROUP, skipBackfaces: true}, result);
+            world.raycastClosest(from, to, {collisionFilterMask: EVERYTHING_ELSE_GROUP, skipBackfaces: false}, result);
             
             player.result = result;
 
@@ -1786,7 +1786,8 @@
           
             let cameraPosition = new THREE.Vector3();
             controls.getObject().children[0].children[0].getWorldPosition(cameraPosition);
-   
+            
+            // createDebugSphere(cameraPosition, 1000, 0x00ff00);
 
             let cast = playerRaycast(cameraPosition, 100);
 
@@ -2270,7 +2271,7 @@
 
 
             console.log(ragdollChestBody)
-            let localPivotPlayer = new CANNON.Vec3(0, 0, -0.3)
+            let localPivotPlayer = new CANNON.Vec3(0, 0.05, -0.3)
             let localPivotRagdoll = new CANNON.Vec3(0, 0, 0)
             let constraint = new CANNON.ConeTwistConstraint(yawBody, ragdollChestBody, {
                 pivotA: localPivotPlayer,
