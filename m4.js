@@ -71,7 +71,7 @@ class M4 {
         
         this.world.addConstraint(handConstraint);
 
-        this.lhConstraint = new CANNON.PointToPointConstraint(this.player.ragdollLeftHand, new CANNON.Vec3(0, 0, 0), this.body, new CANNON.Vec3(-0.4, 0, 0.05));
+        this.lhConstraint = new CANNON.PointToPointConstraint(this.player.ragdollLeftHand, new CANNON.Vec3(0, 0, 0), this.body, new CANNON.Vec3(-0.3, 0.05, 0.07));
         this.player.ragdollLeftHand.position.copy(this.body.position);
         this.world.addConstraint(this.lhConstraint);
 

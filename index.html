@@ -147,6 +147,9 @@
                     <option value="medium">Medium</option>
                     <option value="low">Low</option>
                 </select>
+                <h2>Game</h2>
+                <label for="volume">Volume: <span id="volumeValue">0.5</span></label>
+                <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5">
 
                 <h2>Player</h2>
                 <label for="moveSpeed">Move Speed: <span id="moveSpeedValue">0.5</span></label>
@@ -353,8 +356,7 @@
             createPlayer();
             controlsSetup();
             skySetup();
-            let sceneGltf = await loadGLTF('assets/coltesting.glb', 1)
-            scene.add(sceneGltf.scene);
+            
 
             
             // carSetup();
@@ -389,6 +391,10 @@
             })
 
             //
+
+            settings.volume.addEventListener('input', () => {
+            updateVolume(parseFloat(settings.volume.value));
+            })
 
             settings.dayLength.addEventListener('input', () => {
             updateDayLength();
@@ -465,6 +471,12 @@
             }
         }
 
+        function updateVolume(overrideValue = null) {
+            if(listener) {
+            listener.setMasterVolume(overrideValue !== null ? overrideValue : parseFloat(settings.volume.value));
+            }
+        }
+
         function updateJumpHeight(overrideValue = null) {
             controls.jumpVelocity = overrideValue !== null ? parseFloat(overrideValue) : parseFloat(settings.jumpHeight.value);
         }
@@ -533,7 +545,7 @@
             scene = new THREE.Scene();
             scene.background = new THREE.Color( 0x87ceeb );
 
-            scene.fog = new THREE.Fog( 0x87ceeb, 1, 1000 );
+            scene.fog = new THREE.Fog( 0x000000, 1, 200 );
 
             textureLoader.load('assets/decal.png', function(texture) {
                 decalMat = new THREE.MeshBasicMaterial({ 
@@ -551,7 +563,7 @@
 
         function cameraSetup() {
             // camera
-            camera = new THREE.PerspectiveCamera( 85, width / height, 0.01, 100 );
+            camera = new THREE.PerspectiveCamera( 85, width / height, 0.01, 1000 );
            
             camera.lookAt(0, 0, 0);
 
@@ -894,6 +906,9 @@
             player.pitchObject = controls.getObject().children[0];
             player.pitchObject.position.set(0, 1, 0);
 
+            controls.yawObject.rotation.y = Math.PI;
+
+
             window.addEventListener('click', () => {
                 controls.stepSound = stepSound;
             }, { once: true })
@@ -1044,6 +1059,7 @@
             })
 
             world.allowSleep = true
+            // world.solver.iterations = 10
 
             cannonDebugger = new CannonDebugger(scene, world, {
                 onInit(body, mesh) {
@@ -1102,7 +1118,7 @@
 
             floor.rotation.x = - Math.PI / 2;
             floor.position.y = -1;
-            scene.add( floor );
+            // scene.add( floor );
 
             const floorBody = new CANNON.Body({
                 mass: 0, // make it static
@@ -1160,6 +1176,71 @@
             scene.add( box );
 
             meshMap.set(boxBody, box)
+
+
+            createDebugSphere(new THREE.Vector3(1, 5, -5), 10000, 0x00ff00);
+
+
+            const size = 0.1
+            const dist = size * 2 + 0.4
+            const mass = 1
+            const N = 4
+
+            const sphereShape = new CANNON.Sphere(size)
+
+            let finalBody;
+
+            let previous
+            for (let i = 0; i < N; i++) {
+                // Create a new body
+                const sphereBody = new CANNON.Body({ mass: i === 0 ? 0 : mass, angularDamping: 0.5, linearDamping: 0.5})
+                sphereBody.addShape(sphereShape)
+                sphereBody.position.set(1, 10 - (dist * (N - i)), -5)
+                sphereBody.velocity.x = -i
+                sphereBody.collisionFilterGroup = EVERYTHING_ELSE_GROUP;
+                sphereBody.collisionFilterMask = PLAYER_GROUP | EVERYTHING_ELSE_GROUP;
+                world.addBody(sphereBody)
+
+                let sphereMesh = new THREE.Mesh(new THREE.SphereGeometry(size), defaultMaterial)
+                scene.add(sphereMesh)
+                meshMap.set(sphereBody, sphereMesh)
+
+                // Connect this body to the last one added
+                if (previous) {
+                    const distanceConstraint = new CANNON.DistanceConstraint(sphereBody, previous, dist)
+                    world.addConstraint(distanceConstraint)
+                }
+
+                // Keep track of the lastly added body
+                previous = sphereBody
+
+                if (i === N - 1) {
+                    finalBody = sphereBody
+            }
+            }
+
+            let sceneGltf = await loadGLTF('assets/coltesting.glb', 1)
+            scene.add(sceneGltf.scene);
+            console.log(sceneGltf.scene)
+
+            let lampMesh = sceneGltf.scene.children.filter(child => child.name === 'lamp')[0];
+            let lampBody;
+
+            for (let [body, mesh] of meshMap.entries()) {
+                if (mesh === lampMesh) {
+                    lampBody = body;
+                    break;
+                }
+            }
+            console.log(lampBody)
+
+            lampBody.angularDamping = 0.5;
+
+            let lampConstraint = new CANNON.PointToPointConstraint(lampBody, new CANNON.Vec3(0, dist, 0), finalBody, new CANNON.Vec3(0, 0, 0), 1);
+            world.addConstraint(lampConstraint)
+
+            //guns
+
 
             let coltFireSound, coltRicochetSound;
             let colt;
@@ -1407,7 +1488,7 @@
             // playerBody.updateMassProperties()
 
             
-            // playerBody.position.set(-8, 5, 0)
+            playerBody.position.set(0, 0, 12)
             
             playerBody.linearDamping = 0.9
             playerBody.angularDamping = 0.99
@@ -1416,6 +1497,7 @@
             player.crouching = false;
             
             world.addBody(playerBody)
+
 
             player.anim.grabDest.body = new CANNON.Body({ mass: 0, collisionResponse: false})
             player.anim.grabDest.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01, 0.01, 0.01)))
@@ -1452,6 +1534,8 @@
                     mesh.castShadow = true;
                     mesh.receiveShadow = true;
                 }
+
+                
                 
                 mixers.forEach(mixer => mixer.update(dt))
 
@@ -1496,8 +1580,10 @@
                 }
 
                 if(keys['KeyC']) {
+                    console.log(controls.velocityFactor)
                     player.crouching = !player.crouching;
-                    controls.velocityFactor = player.crouching ? 0.1 : 0.5;
+                    controls.isCrouching = player.crouching;
+                    
                     keys['KeyC'] = false;
                 }
 
@@ -1695,7 +1781,7 @@
 
         function grabObjectCheck(body) {
             if(player.equipped && body === null) return;
-            if(player.equipped && body !== player.equipped.body && body !== null) unequip();
+            if(player.equipped && body !== player.equipped.body && body !== null) player.equipped.unequip();
 
             if(body === null) {grabbedObject = null; isGrabbing = false; removegrabConstraint(); world.removeConstraint(player.handConstraint); return;}
             if(body.mass === 0) return;
@@ -1897,23 +1983,23 @@
                             switch (child.userData.shapeType) {
                                 case 'SPHERE':
                                     shapeType = ShapeType.SPHERE;
-                                    sphereCollision(child, child.userData.radius || 0.5);
+                                    sphereCollision(child, gltf.scene, child.userData.radius || 0.5);
                                     break;
                                 case 'BOX':
                                     shapeType = ShapeType.BOX;
-                                    boxCollision(child, child.userData.size);
+                                    boxCollision(child, gltf.scene, child.userData.size);
                                     break;
                                 case 'CYLINDER':
                                     shapeType = ShapeType.CYLINDER;
-                                    cylinderCollision(child, child.userData.radiusTop, child.userData.radiusBottom, child.userData.height, child.userData.resolution);
+                                    cylinderCollision(child, gltf.scene, child.userData.radiusTop, child.userData.radiusBottom, child.userData.height, child.userData.resolution);
                                     break;
                                 case 'HULL':
                                     shapeType = ShapeType.HULL;
-                                    hullCollision(child);
+                                    hullCollision(child, gltf.scene);
                                     break;
                                 case 'MESH':
                                     shapeType = ShapeType.MESH;
-                                    meshCollision(child);
+                                    meshCollision(child, gltf.scene);
                                     break;
                                 default:
                                     //no collision
@@ -1931,7 +2017,7 @@
 
         }
 
-        function sphereCollision(child, radius) {
+        function sphereCollision(child, scene, radius) {
             let sphereBody = new CANNON.Body({
                 mass: child.userData.mass || 0, 
                 collisionFilterGroup: EVERYTHING_ELSE_GROUP,
@@ -1940,10 +2026,14 @@
             sphereBody.addShape(sphere);
             sphereBody.position.set(child.position.x, child.position.y, child.position.z);
             world.addBody(sphereBody);
-            meshMap.set(sphereBody, child);
+            if(child.name.endsWith('noDraw')) {
+                scene.remove(child);
+            } else {
+                meshMap.set(sphereBody, child);
+            }
         }
 
-        function boxCollision(child, size) {
+        function boxCollision(child, scene, size) {
             let boxBody = new CANNON.Body({
                 mass: child.userData.mass || 0,
                 collisionFilterGroup: EVERYTHING_ELSE_GROUP,
@@ -1961,10 +2051,14 @@
             boxBody.addShape(box);
             boxBody.position.set(child.position.x, child.position.y, child.position.z);
             world.addBody(boxBody);
-            meshMap.set(boxBody, child);
+            if(child.name.endsWith('noDraw')) {
+                scene.remove(child);
+            } else {
+                meshMap.set(boxBody, child);
+            }
         }
 
-        function cylinderCollision(child, radiusTop, radiusBottom, height, resolution) {
+        function cylinderCollision(child, scene, radiusTop, radiusBottom, height, resolution) {
             let cylinderBody = new CANNON.Body({
                 mass: child.userData.mass || 0,
                 collisionFilterGroup: EVERYTHING_ELSE_GROUP,
@@ -1976,10 +2070,14 @@
             cylinderBody.addShape(cylinder);
             cylinderBody.position.set(child.position.x, child.position.y, child.position.z);
             world.addBody(cylinderBody);
-            meshMap.set(cylinderBody, child);
+            if(child.name.endsWith('noDraw')) {
+                scene.remove(child);
+            } else {
+                meshMap.set(cylinderBody, child);
+            }
         }
 
-        function hullCollision(child) {
+        function hullCollision(child, scene) {
             let hullType = child.userData.hullType || 'mesh';
             let hullBody = new CANNON.Body({
                 mass: child.userData.mass || 0,
@@ -2026,7 +2124,11 @@
             hullBody.position.set(child.position.x, child.position.y, child.position.z);
             hullBody.quaternion.set(child.quaternion.x, child.quaternion.y, child.quaternion.z, child.quaternion.w);
             world.addBody(hullBody);
-            meshMap.set(hullBody, child);
+            if(child.name.endsWith('noDraw')) {
+                scene.remove(child);
+            } else {
+                meshMap.set(hullBody, child);
+            }
         }
 
         const wheels = [];
@@ -2195,8 +2297,8 @@
             const shouldersDistance = 0.5 * scale
             const upperArmLength = 0.4 * scale
             const lowerArmLength = 0.4 * scale
-            const upperArmSize = 0.2 * scale
-            const lowerArmSize = 0.2 * scale
+            const upperArmSize = 0.1 * scale
+            const lowerArmSize = 0.1 * scale
             const neckLength = 0.1 * scale
             const headRadius = 0.25 * scale
             const handRadius = 0.1 * scale
@@ -2204,7 +2306,7 @@
             const pelvisLength = 0.4 * scale
             const upperLegLength = 0.5 * scale
             const upperLegSize = 0.2 * scale
-            const lowerLegSize = 0.2 * scale
+            const lowerLegSize = 0.15 * scale
             const lowerLegLength = 0.5 * scale
 
             const headShape = new CANNON.Sphere(headRadius)

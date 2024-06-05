@@ -14,6 +14,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
     this.cannonBody = cannonBody
 
     // var eyeYPos = 2 // eyes are 2 meters above the ground
+    this.velocityDefault = 0.5
     this.velocityFactor = 0.5
     this.jumpVelocity = 15
 
@@ -32,6 +33,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
     this.moveRight = false
 
     this.stepSound;
+    this.isCrouching = false;
 
     this.canJump = false
     this.jumpPreload = false
@@ -62,6 +64,7 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
           this.velocity.y = this.jumpVelocity
           this.jumpPreload = false
           this.isJumping = true
+          this.canJump = false
         } 
         
 
@@ -217,16 +220,32 @@ class PointerLockControlsCannon extends THREE.EventDispatcher {
     this.inputVelocity.set(0, 0, 0)
 
     if (this.moveForward) {
+      let crouchMult = this.isCrouching ? 0.5 : 1
+      let jumpMult = this.isJumping ? 0.5 : 1
+      this.velocityFactor = this.velocityDefault * crouchMult * jumpMult
+      
       this.inputVelocity.z = -this.velocityFactor * delta
     }
     if (this.moveBackward) {
+      let crouchMult = this.isCrouching ? 0.5 : 1
+      let jumpMult = this.isJumping ? 0.5 : 1
+      this.velocityFactor = this.velocityDefault * crouchMult * jumpMult
+
       this.inputVelocity.z = this.velocityFactor * delta
     }
 
     if (this.moveLeft) {
+      let crouchMult = this.isCrouching ? 0.5 : 1
+      let jumpMult = this.isJumping ? 0.5 : 1
+      this.velocityFactor = this.velocityDefault * crouchMult * jumpMult
+
       this.inputVelocity.x = -this.velocityFactor * delta
     }
     if (this.moveRight) {
+      let crouchMult = this.isCrouching ? 0.5 : 1
+      let jumpMult = this.isJumping ? 0.5 : 1
+      this.velocityFactor = this.velocityDefault * crouchMult * jumpMult
+
       this.inputVelocity.x = this.velocityFactor * delta
     }
 
