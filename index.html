@@ -125,12 +125,11 @@
 </head>
 <body>
     <div id="pauseMenu">
-        <h1>Fin's Cool Game!</h1>
-        <h2>Work In Progress</h2>
-        <h3 style="margin-bottom: 1em;">You should read the Controls...</h3>
-        <section id="pauseDefault">
+        <h1>ThreeJS FPS</h1>
+        <h2 style="margin-bottom: 1rem;">Work In Progress</h2>
+        <section id="pauseDefault" style="display: none;">
             <h1>Paused</h1>
-            <button id="resume">Resume</button>
+            <button id="resume">Play</button>
             <button id="settings">Settings</button>
             <button id="controls">Controls</button>
             <button id="restart">Restart</button>
@@ -194,20 +193,20 @@
             </div>
             <button class="back">Back</button>
         </section>
-        <section id="controlsList" style="display: none;">
+        <section id="controlsList">
             <h1>Controls</h1>
             <div>
                 <p>Use <b>WASD</b> to move</p>
-                <p>Press <b>Space</b> to jump. Hold space while in the air to jump again as soon as you land</p>
-                <p>Press <b>C</b> to toggle crouch. This affects your movement speed. Good for precise jumps</p>
+                <p>Press <b>Space</b> to jump</p>
+                <p>Press <b>C</b> to toggle crouch</p>
                 <p>Press <b>E</b> when you see <span class="material-symbols-outlined">pan_tool</span> to grab an object</p>
                 <p>Press <b>E</b> again to release the object</p>
                 <p>Press <b>F</b> when you see <span class="material-symbols-outlined">touch_app</span> to interact with an object</p>
-                <p>Items can be equipped and dropped by interacting with them</p>
+                <p>Press <b>F</b> again to stop interacting with the object</p>
                 <p>Scrolling while holding an object will move it closer or further away</p>
                 <p>Press <b>L</b> for flashlight</p>
             </div>
-            <button class="back">Back</button>
+            <button class="back">Ok</button>
         </section>
         
     </div>
@@ -253,8 +252,8 @@
         import {ImprovedNoise } from './node_modules/three/examples/jsm/math/ImprovedNoise.js';
         import { UnrealBloomPass } from './node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
         import { DecalGeometry } from './node_modules/three/examples/jsm/geometries/DecalGeometry.js';
-        import { Colt } from './colt.js'
-        import { M4 } from './m4.js'
+        import { Colt } from './assets/colt.js'
+        import { M4 } from './assets/m4.js'
 
         const width = window.innerWidth, height = window.innerHeight;
 
@@ -1118,7 +1117,7 @@
 
             floor.rotation.x = - Math.PI / 2;
             floor.position.y = -1;
-            // scene.add( floor );
+            scene.add( floor );
 
             const floorBody = new CANNON.Body({
                 mass: 0, // make it static
@@ -1219,12 +1218,17 @@
             }
             }
 
-            let sceneGltf = await loadGLTF('assets/coltesting.glb', 1)
+            let sceneGltf = await loadGLTF('assets/simple.glb', 1)
             scene.add(sceneGltf.scene);
             console.log(sceneGltf.scene)
 
             let lampMesh = sceneGltf.scene.children.filter(child => child.name === 'lamp')[0];
             let lampBody;
+
+            let lampLight = lampMesh.children.filter(child => child.name === 'Spot')[0];
+            lampLight.castShadow = true;
+            lampLight.shadow.bias = -0.0001;
+
 
             for (let [body, mesh] of meshMap.entries()) {
                 if (mesh === lampMesh) {
@@ -1488,7 +1492,7 @@
             // playerBody.updateMassProperties()
 
             
-            playerBody.position.set(0, 0, 12)
+            playerBody.position.set(0, 0, -5)
             
             playerBody.linearDamping = 0.9
             playerBody.angularDamping = 0.99
@@ -1555,7 +1559,7 @@
                 // sunHelper.update()
 
                 if(keys['KeyL']) {
-                    spotLight.intensity = spotLight.intensity === 0 ? 3 : 0;
+                    spotLight.intensity = spotLight.intensity === 0 ? 10 : 0;
                     keys['KeyL'] = false;
                 }
                 if(keys['KeyE']) {
